@@ -37,6 +37,20 @@ def _is_frozen() -> bool:
     return getattr(sys, "frozen", False)
 
 
+def _redirect_output_to_file() -> None:
+    """Reindirizza stdout/stderr su file quando l'exe gira senza console.
+
+    Con --noconsole su Windows, sys.stdout e sys.stderr sono None.
+    uvicorn.logging.DefaultFormatter chiama sys.stdout.isatty() al momento
+    della configurazione e crasha con AttributeError. Aprire un file reale
+    risolve il crash e produce un log utile per il debug.
+    """
+    log_path = Path(sys.executable).parent / "cbd-preventivi.log"
+    log_file = open(log_path, "w", encoding="utf-8", buffering=1)
+    sys.stdout = log_file
+    sys.stderr = log_file
+
+
 def _frontend_dir() -> Path:
     """Percorso della directory frontend, corretto sia in sviluppo che da exe."""
     if _is_frozen():
@@ -94,6 +108,11 @@ def serve(dev: bool = False) -> None:
         )
     else:
         # Modalità produzione / exe: oggetto app diretto, nessun reload.
+        # Quando --noconsole è attivo stdout/stderr sono None: li redirigiamo
+        # su file prima che uvicorn configuri il logging.
+        if _is_frozen() and sys.stdout is None:
+            _redirect_output_to_file()
+
         # Apre il browser in un thread separato così il server parte prima.
         url = f"http://{HOST}:{PORT}"
         threading.Thread(target=_apri_browser, args=(url,), daemon=True).start()
