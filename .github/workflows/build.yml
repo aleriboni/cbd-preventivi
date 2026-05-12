@@ -1,0 +1,57 @@
+name: Build Windows EXE
+
+# Trigger 1: manuale da GitHub → Actions → "Run workflow"
+# Trigger 2: push di un tag versione (es. git tag v0.2.0 && git push --tags)
+#            → crea automaticamente una Release con lo zip allegato
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Installa uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Installa dipendenze
+        run: uv sync
+
+      - name: Build exe
+        run: uv run python build.py
+
+      - name: Crea zip
+        run: |
+          Compress-Archive `
+            -Path dist\cbd-preventivi\* `
+            -DestinationPath dist\cbd-preventivi-windows.zip
+
+      # Artefatto scaricabile da Actions → workflow run → Artifacts
+      - name: Upload artefatto
+        uses: actions/upload-artifact@v4
+        with:
+          name: cbd-preventivi-windows
+          path: dist\cbd-preventivi-windows.zip
+          retention-days: 30
+
+      # Release con zip allegato (solo su tag v*)
+      - name: Crea Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "CBD Preventivi ${{ github.ref_name }}"
+          body: |
+            ## Installazione
+            1. Scaricare `cbd-preventivi-windows.zip`
+            2. Estrarre la cartella
+            3. Doppio click su `cbd-preventivi.exe`
+
+            Il browser si apre automaticamente su http://127.0.0.1:8000.
+            I dati vengono salvati nella cartella `data/` accanto all'eseguibile.
+          files: dist\cbd-preventivi-windows.zip

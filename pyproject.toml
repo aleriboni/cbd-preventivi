@@ -1,0 +1,32 @@
+[project]
+name = "cbd-preventivi"
+version = "0.1.0"
+description = "Tool per la creazione e gestione di computi metrici edilizi con supporto import/export PriMus"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.111.0",
+    "uvicorn[standard]>=0.30.0",
+    "openpyxl>=3.1.0",
+    "pydantic>=2.0.0",
+    "python-multipart>=0.0.9",
+]
+
+[project.scripts]
+cbd-preventivi = "cbd_preventivi.api.app:serve_dev"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/cbd_preventivi"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "pyinstaller>=6.0.0",
+]

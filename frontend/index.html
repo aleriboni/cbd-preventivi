@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Preventivi Edili</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 14px;
+    background: #f4f5f7;
+    color: #1a1a2e;
+    line-height: 1.5;
+  }
+
+  header {
+    background: #1a1a2e;
+    color: #fff;
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,.3);
+  }
+  header h1 { font-size: 18px; font-weight: 600; letter-spacing: .3px; }
+  header .id-badge {
+    font-size: 12px;
+    background: rgba(255,255,255,.15);
+    padding: 3px 10px;
+    border-radius: 20px;
+    display: none;
+  }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px 16px 80px; }
+
+  /* ---- sezioni ---- */
+  .section {
+    background: #fff;
+    border: 1px solid #e2e4e8;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+  .section-header {
+    padding: 14px 18px;
+    background: #f8f9fb;
+    border-bottom: 1px solid #e2e4e8;
+    font-weight: 600;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    color: #555;
+  }
+  .section-body { padding: 18px; }
+
+  /* ---- form grid ---- */
+  .grid { display: grid; gap: 12px; }
+  .grid-2 { grid-template-columns: repeat(2, 1fr); }
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .grid-4 { grid-template-columns: repeat(4, 1fr); }
+  @media (max-width: 640px) {
+    .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+  }
+
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field label { font-size: 12px; font-weight: 500; color: #666; }
+  .field input, .field select {
+    border: 1px solid #d0d3db;
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color .15s;
+  }
+  .field input:focus, .field select:focus { border-color: #3b6bff; box-shadow: 0 0 0 3px rgba(59,107,255,.12); }
+
+  /* ---- voci ---- */
+  .voce-card {
+    border: 1px solid #dde1ea;
+    border-radius: 8px;
+    margin-bottom: 14px;
+    overflow: hidden;
+  }
+  .voce-header {
+    background: #eef1f8;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .voce-header:hover { background: #e4e8f3; }
+  .voce-nr {
+    background: #3b6bff;
+    color: #fff;
+    border-radius: 50%;
+    width: 24px; height: 24px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .voce-title { font-weight: 600; flex: 1; }
+  .voce-summary { font-size: 12px; color: #888; margin-left: auto; }
+  .voce-toggle { color: #888; font-size: 18px; transition: transform .2s; }
+  .voce-toggle.open { transform: rotate(180deg); }
+  .voce-body { padding: 16px; border-top: 1px solid #dde1ea; }
+
+  /* ---- sub-sezioni voce ---- */
+  .sub-section { margin-top: 18px; }
+  .sub-title {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    color: #888;
+    margin-bottom: 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #e8eaf0;
+  }
+
+  /* ---- tabelle misurazioni / risorse ---- */
+  .tbl-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    text-align: left;
+    padding: 6px 8px;
+    background: #f4f5f7;
+    font-weight: 600;
+    color: #555;
+    border-bottom: 1px solid #dde1ea;
+  }
+  td { padding: 5px 8px; border-bottom: 1px solid #f0f1f4; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  td input {
+    border: 1px solid #d0d3db;
+    border-radius: 4px;
+    padding: 4px 7px;
+    font-size: 13px;
+    width: 100%;
+    outline: none;
+    background: #fff;
+  }
+  td input:focus { border-color: #3b6bff; box-shadow: 0 0 0 2px rgba(59,107,255,.1); }
+  .td-calc { text-align: right; color: #444; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .td-delete { width: 28px; text-align: center; }
+
+  /* ---- calcoli voce ---- */
+  .calcoli-box {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+    background: #f8f9fb;
+    border-radius: 8px;
+    padding: 14px;
+    margin-top: 16px;
+    border: 1px solid #e4e8f2;
+  }
+  .calc-item { display: flex; flex-direction: column; gap: 2px; }
+  .calc-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: .4px; }
+  .calc-value { font-size: 15px; font-weight: 600; color: #1a1a2e; font-variant-numeric: tabular-nums; }
+  .calc-value.highlight { color: #3b6bff; }
+
+  /* ---- totale ---- */
+  .totale-bar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 16px;
+    padding: 16px 18px;
+    background: #1a1a2e;
+    border-radius: 10px;
+    color: #fff;
+    margin-bottom: 20px;
+  }
+  .totale-label { font-size: 13px; opacity: .7; }
+  .totale-value { font-size: 22px; font-weight: 700; letter-spacing: -.3px; }
+
+  /* ---- bottoni ---- */
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 9px 18px;
+    border: none; border-radius: 7px;
+    font-size: 14px; font-weight: 600;
+    cursor: pointer;
+    transition: opacity .15s, transform .1s;
+  }
+  .btn:hover { opacity: .88; }
+  .btn:active { transform: scale(.97); }
+  .btn-primary { background: #3b6bff; color: #fff; }
+  .btn-success { background: #17a25a; color: #fff; }
+  .btn-danger  { background: none; border: none; color: #cc3344; font-size: 16px; cursor: pointer; padding: 2px 6px; }
+  .btn-add {
+    font-size: 13px; color: #3b6bff; background: none; border: 1px dashed #aab5e0;
+    border-radius: 6px; width: 100%; padding: 8px; cursor: pointer; margin-top: 8px;
+    transition: background .15s;
+  }
+  .btn-add:hover { background: #eef1ff; }
+
+  .action-bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: #fff;
+    border-top: 1px solid #e2e4e8;
+    padding: 12px 24px;
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    z-index: 200;
+    box-shadow: 0 -4px 16px rgba(0,0,0,.07);
+  }
+
+  .toast {
+    position: fixed; bottom: 80px; right: 24px;
+    background: #1a1a2e; color: #fff;
+    padding: 10px 18px; border-radius: 8px;
+    font-size: 13px; font-weight: 500;
+    opacity: 0; transition: opacity .3s;
+    pointer-events: none;
+    z-index: 300;
+  }
+  .toast.show { opacity: 1; }
+  .toast.error { background: #cc3344; }
+
+  .btn-home {
+    background: rgba(255,255,255,.15); border: none; color: #fff;
+    padding: 5px 14px; border-radius: 6px; font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: background .15s; display: none;
+  }
+  .btn-home:hover { background: rgba(255,255,255,.28); }
+
+  /* ---- landing ---- */
+  .landing {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; min-height: calc(100vh - 60px); padding: 40px 24px;
+  }
+  .landing h2 { font-size: 26px; font-weight: 700; color: #1a1a2e; margin-bottom: 8px; text-align: center; }
+  .landing > p { color: #888; margin-bottom: 40px; text-align: center; }
+  .landing-cards { display: flex; gap: 24px; flex-wrap: wrap; justify-content: center; }
+  .landing-card {
+    background: #fff; border: 2px solid #e2e4e8; border-radius: 16px;
+    padding: 40px 32px; width: 280px; text-align: center; cursor: pointer;
+    transition: border-color .2s, box-shadow .2s, transform .15s;
+    position: relative; user-select: none;
+  }
+  .landing-card:hover { border-color: #3b6bff; box-shadow: 0 6px 24px rgba(59,107,255,.15); transform: translateY(-3px); }
+  .landing-card-icon { font-size: 52px; display: block; margin-bottom: 16px; }
+  .landing-card h3 { font-size: 17px; font-weight: 700; color: #1a1a2e; margin-bottom: 8px; }
+  .landing-card p { font-size: 13px; color: #888; line-height: 1.5; }
+  .landing-card input[type="file"] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+  .badge-importato {
+    font-size: 10px; background: #fff3cd; color: #856404;
+    border: 1px solid #ffc107; border-radius: 3px; padding: 1px 4px;
+    margin-left: 4px; vertical-align: middle;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div style="display:flex;align-items:center;gap:12px">
+    <button class="btn-home" id="home-btn" onclick="tornaCasa()">← Home</button>
+    <h1>Preventivi Edili</h1>
+  </div>
+  <span class="id-badge" id="idBadge"></span>
+</header>
+
+<!-- LANDING -->
+<div id="screen-landing">
+  <div class="landing">
+    <h2>Preventivi Edili</h2>
+    <p>Crea un nuovo computo metrico oppure importa un file da PriMus</p>
+    <div class="landing-cards">
+      <div class="landing-card" onclick="iniziaNuovo()">
+        <span class="landing-card-icon">📋</span>
+        <h3>Nuovo preventivo</h3>
+        <p>Crea un computo metrico da zero</p>
+      </div>
+      <div class="landing-card">
+        <input type="file" accept=".xlsx" onchange="importaDaPrimus(this)" title="Seleziona un file xlsx PriMus">
+        <span class="landing-card-icon">📥</span>
+        <h3>Importa da PriMus</h3>
+        <p>Carica un file Excel esportato da PriMus per pre-popolare il preventivo</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- EDITOR -->
+<div id="screen-editor" style="display:none">
+<div class="container">
+
+  <!-- Dati preventivo -->
+  <div class="section">
+    <div class="section-header">Dati preventivo</div>
+    <div class="section-body">
+      <div class="grid grid-4">
+        <div class="field">
+          <label>Nome preventivo</label>
+          <input id="nome" type="text" placeholder="Es. Ristrutturazione via Roma" oninput="aggiornaTitolo()">
+        </div>
+        <div class="field">
+          <label>Cliente</label>
+          <input id="cliente" type="text" placeholder="Nome cliente">
+        </div>
+        <div class="field">
+          <label>Data</label>
+          <input id="data" type="date">
+        </div>
+        <div class="field">
+          <label>Numero</label>
+          <input id="numero" type="text" placeholder="Es. 2024/001">
+        </div>
+      </div>
+      <div class="grid grid-2" style="margin-top:12px; max-width:320px">
+        <div class="field">
+          <label>Ricarica default (%)</label>
+          <input id="ricarica_default" type="number" min="0" max="200" step="1" value="20" oninput="renderCalcoli()">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Voci -->
+  <div class="section">
+    <div class="section-header">Voci di computo</div>
+    <div class="section-body">
+      <div id="voci-container"></div>
+      <button class="btn-add" onclick="aggiungiVoce()">+ Aggiungi voce</button>
+    </div>
+  </div>
+
+  <!-- Totale -->
+  <div class="totale-bar">
+    <span class="totale-label">TOTALE COSTI</span>
+    <span class="totale-value" id="totale-costi">€ 0,00</span>
+    <span style="opacity:.25;margin:0 4px">|</span>
+    <span class="totale-label">TOTALE CON RICARICA</span>
+    <span class="totale-value" id="totale-prev">€ 0,00</span>
+  </div>
+
+</div>
+
+<!-- Azioni fisse in basso -->
+<div class="action-bar">
+  <button class="btn btn-primary" onclick="salva()">💾 Salva</button>
+  <button class="btn btn-success" onclick="esportaPrimus()">📤 Esporta Primus</button>
+</div>
+</div><!-- /screen-editor -->
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ---------------------------------------------------------------------------
+// Stato
+// ---------------------------------------------------------------------------
+let preventivoId = null;
+
+// ---------------------------------------------------------------------------
+// Calcoli (speculare a calcoli.py)
+// ---------------------------------------------------------------------------
+function prodNotNull(...vals) {
+  let r = 1;
+  let anyVal = false;
+  for (const v of vals) {
+    const n = parseFloat(v);
+    if (!isNaN(n) && v !== '' && v !== null && v !== undefined) {
+      r *= n;
+      anyVal = true;
+    }
+  }
+  return anyVal ? Math.round(r * 100) / 100 : 0;
+}
+
+function quantitaRiga(mis) {
+  const qd = parseFloat(mis.quantita_diretta);
+  if (!isNaN(qd) && String(mis.quantita_diretta ?? '').trim() !== '') return Math.round(qd * 100) / 100;
+  const vals = [mis.par_ug, mis.lung, mis.larg, mis.h_peso].filter(v => v !== '' && v !== null && v !== undefined && !isNaN(parseFloat(v)));
+  if (!vals.length) return 0;
+  let r = 1;
+  for (const v of vals) r *= parseFloat(v);
+  return Math.round(r * 100) / 100;
+}
+
+function quantitaX(voce) {
+  const mis = getMisurazioni(voce);
+  if (mis.length > 0) {
+    return Math.round(mis.reduce((s, m) => s + quantitaRiga(m), 0) * 100) / 100;
+  }
+  const qm = parseFloat(document.querySelector(`[data-voce="${voce}"] .quantita-manuale`)?.value);
+  return isNaN(qm) ? 0 : qm;
+}
+
+function totaleCosti(voce) {
+  return Math.round(getRisorse(voce).reduce((s, r) => {
+    const q = parseFloat(r.quantita) || 0;
+    const c = parseFloat(r.costo_unitario) || 0;
+    return s + q * c;
+  }, 0) * 100) / 100;
+}
+
+function ricaRicaEffettiva(voce) {
+  const ricaricaInput = document.querySelector(`[data-voce="${voce}"] .ricarica-voce`);
+  const val = ricaricaInput ? ricaricaInput.value.trim() : '';
+  if (val !== '') return parseFloat(val) / 100;
+  return (parseFloat(document.getElementById('ricarica_default').value) || 0) / 100;
+}
+
+function calcVoce(voce) {
+  const qx = quantitaX(voce);
+  const tc = totaleCosti(voce);
+  const ric = ricaRicaEffettiva(voce);
+
+  const coEl = document.querySelector(`[data-voce="${voce}"] .costo-override`);
+  const co = coEl && coEl.value !== '' ? parseFloat(coEl.value) : null;
+
+  let cpu, usingOverride = false;
+  if (co !== null && !isNaN(co) && tc === 0) {
+    cpu = co;
+    usingOverride = true;
+  } else {
+    cpu = qx > 0 ? tc / qx : 0;
+  }
+
+  const ppu = Math.round(cpu * (1 + ric) * 100) / 100;
+  const imp = Math.round(ppu * qx * 100) / 100;
+  return { qx, tc, cpu: Math.round(cpu * 100) / 100, ppu, imp, usingOverride };
+}
+
+// ---------------------------------------------------------------------------
+// Raccolta dati dal DOM
+// ---------------------------------------------------------------------------
+function getMisurazioni(voceId) {
+  const rows = document.querySelectorAll(`[data-voce="${voceId}"] .mis-row`);
+  return Array.from(rows).map(row => ({
+    descrizione:      row.querySelector('.mis-desc')?.value     || '',
+    par_ug:           row.querySelector('.mis-par_ug')?.value   || null,
+    lung:             row.querySelector('.mis-lung')?.value     || null,
+    larg:             row.querySelector('.mis-larg')?.value     || null,
+    h_peso:           row.querySelector('.mis-h_peso')?.value   || null,
+    quantita_diretta: row.querySelector('.mis-qdiretta')?.value || null,
+  }));
+}
+
+function getRisorse(voceId) {
+  const rows = document.querySelectorAll(`[data-voce="${voceId}"] .ris-row`);
+  return Array.from(rows).map(row => ({
+    descrizione:    row.querySelector('.ris-desc')?.value || '',
+    um:             row.querySelector('.ris-um')?.value   || '',
+    quantita:       row.querySelector('.ris-q')?.value    || 0,
+    costo_unitario: row.querySelector('.ris-c')?.value    || 0,
+  }));
+}
+
+function raccogliPreventivo() {
+  const vociEls = document.querySelectorAll('[data-voce]');
+  const voci = Array.from(vociEls).map(el => {
+    const v = el.dataset.voce;
+    const ricInput = el.querySelector('.ricarica-voce').value.trim();
+    return {
+      codice:      el.querySelector('.voce-codice').value,
+      descrizione: el.querySelector('.voce-descrizione').value,
+      um:          el.querySelector('.voce-um').value,
+      ricarica:    ricInput !== '' ? parseFloat(ricInput) / 100 : null,
+      quantita_manuale: parseFloat(el.querySelector('.quantita-manuale')?.value) || null,
+      costo_override: (() => { const s = el.querySelector('.costo-override')?.value; const n = parseFloat(s); return s && !isNaN(n) ? n : null; })(),
+      misurazioni: getMisurazioni(v),
+      risorse: getRisorse(v),
+    };
+  });
+  return {
+    id: preventivoId,
+    nome:    document.getElementById('nome').value,
+    cliente: document.getElementById('cliente').value,
+    data:    document.getElementById('data').value,
+    numero:  document.getElementById('numero').value,
+    ricarica_default: (parseFloat(document.getElementById('ricarica_default').value) || 0) / 100,
+    voci,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Render voci
+// ---------------------------------------------------------------------------
+let voceCounter = 0;
+
+function aggiungiVoce(dati) {
+  const id = ++voceCounter;
+  const container = document.getElementById('voci-container');
+  const div = document.createElement('div');
+  div.className = 'voce-card';
+  div.setAttribute('data-voce', id);
+  div.innerHTML = templateVoce(id, dati);
+  container.appendChild(div);
+  if (!dati) toggleVoce(id);
+  renderCalcoli();
+}
+
+function templateVoce(id, d) {
+  const mis = d?.misurazioni || [];
+  const ris = d?.risorse || [];
+  const ricaricaVal = d?.ricarica != null ? (d.ricarica * 100).toFixed(0) : '';
+  const qManuale = d?.quantita_manuale ?? '';
+
+  return `
+  <div class="voce-header" onclick="toggleVoce(${id})">
+    <div class="voce-nr">${id}</div>
+    <div class="voce-title">
+      <input class="voce-codice" type="text" value="${d?.codice||''}" placeholder="COD" style="width:60px;margin-right:8px;font-weight:700" oninput="renderCalcoli()" onclick="event.stopPropagation()">
+      <input class="voce-descrizione" type="text" value="${d?.descrizione||''}" placeholder="Descrizione lavorazione" style="width:360px" oninput="renderCalcoli()" onclick="event.stopPropagation()">
+    </div>
+    <select class="voce-um" style="padding:5px 8px;border:1px solid #d0d3db;border-radius:5px;font-size:13px;width:90px" onchange="renderCalcoli()" onclick="event.stopPropagation()">
+      ${['mq','mc','ml','cad','a corpo'].map(u => `<option value="${u}" ${d?.um===u?'selected':''}>${u}</option>`).join('')}
+    </select>
+    <div style="display:flex;align-items:center;gap:4px;font-size:13px" onclick="event.stopPropagation()">
+      <span style="color:#888">Ric.%</span>
+      <input class="ricarica-voce" type="number" min="0" max="200" value="${ricaricaVal}" placeholder="—" style="width:54px;padding:5px 7px;border:1px solid #d0d3db;border-radius:5px;font-size:13px" oninput="renderCalcoli()">
+    </div>
+    <span class="voce-summary" id="summary-${id}"></span>
+    <button class="btn-danger" onclick="rimuoviVoce(${id},event)" title="Elimina voce">✕</button>
+    <span class="voce-toggle" id="toggle-${id}">▾</span>
+  </div>
+  <div class="voce-body" id="body-${id}" style="display:none">
+  <input type="hidden" class="costo-override" value="${d?.costo_override ?? ''}">
+
+    <!-- MISURAZIONI -->
+    <div class="sub-section">
+      <div class="sub-title">Misurazioni</div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:34%">Descrizione</th>
+              <th style="width:9%">Par.ug</th>
+              <th style="width:9%">Lung.</th>
+              <th style="width:9%">Larg.</th>
+              <th style="width:9%">H/peso</th>
+              <th style="width:10%" class="td-calc">Calcolata</th>
+              <th style="width:20%">Q.tà diretta</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="mis-tbody-${id}">
+            ${mis.map((m,i) => templateMisRiga(id, i, m)).join('')}
+          </tbody>
+        </table>
+      </div>
+      <button class="btn-add" onclick="aggiungiMis(${id})">+ Aggiungi misurazione</button>
+      <div style="margin-top:8px;display:flex;align-items:center;gap:8px;font-size:13px;color:#888">
+        <span>Quantità manuale (se no misurazioni):</span>
+        <input class="quantita-manuale" type="number" min="0" step="any" value="${qManuale}" placeholder="es. 1" style="width:80px;padding:4px 8px;border:1px solid #d0d3db;border-radius:5px;font-size:13px" oninput="renderCalcoli()">
+      </div>
+    </div>
+
+    <!-- RISORSE -->
+    <div class="sub-section">
+      <div class="sub-title">Risorse (analisi costi)</div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:40%">Descrizione</th>
+              <th style="width:8%">UM</th>
+              <th style="width:10%">Q.tà</th>
+              <th style="width:14%">Costo unit.</th>
+              <th style="width:10%" class="td-calc">Totale</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="ris-tbody-${id}">
+            ${ris.map((r,i) => templateRisRiga(id, i, r)).join('')}
+          </tbody>
+        </table>
+      </div>
+      <button class="btn-add" onclick="aggiungiRis(${id})">+ Aggiungi risorsa</button>
+    </div>
+
+    <!-- CALCOLI -->
+    <div class="calcoli-box" id="calcoli-${id}">
+      <div class="calc-item"><span class="calc-label">Quantità</span><span class="calc-value" id="c-qx-${id}">—</span></div>
+      <div class="calc-item"><span class="calc-label">Totale costi</span><span class="calc-value" id="c-tc-${id}">—</span></div>
+      <div class="calc-item"><span class="calc-label">Costo / UM</span><span class="calc-value" id="c-cpu-${id}">—</span></div>
+      <div class="calc-item"><span class="calc-label">Prezzo / UM</span><span class="calc-value" id="c-ppu-${id}">—</span></div>
+      <div class="calc-item"><span class="calc-label">Importo voce</span><span class="calc-value highlight" id="c-imp-${id}">—</span></div>
+    </div>
+  </div>`;
+}
+
+function templateMisRiga(voce, idx, m) {
+  const hasDiretta = m?.quantita_diretta != null && m?.quantita_diretta !== '';
+  const dimStyle = hasDiretta ? 'opacity:0.3;pointer-events:none' : '';
+  return `<tr class="mis-row" data-idx="${idx}">
+    <td><input class="mis-desc" type="text" value="${esc(m?.descrizione||'')}" placeholder="Descrizione" oninput="renderCalcoli()"></td>
+    <td><input class="mis-par_ug" type="number" step="any" value="${m?.par_ug??''}" style="${dimStyle}" oninput="renderCalcoli()"></td>
+    <td><input class="mis-lung"   type="number" step="any" value="${m?.lung??''}"   style="${dimStyle}" oninput="renderCalcoli()"></td>
+    <td><input class="mis-larg"   type="number" step="any" value="${m?.larg??''}"   style="${dimStyle}" oninput="renderCalcoli()"></td>
+    <td><input class="mis-h_peso" type="number" step="any" value="${m?.h_peso??''}" style="${dimStyle}" oninput="renderCalcoli()"></td>
+    <td class="td-calc mis-qta">—</td>
+    <td><input class="mis-qdiretta" type="number" step="any" value="${m?.quantita_diretta??''}" placeholder="es. 38.5" oninput="renderCalcoli()"></td>
+    <td class="td-delete"><button class="btn-danger" onclick="rimuoviRiga(this)" title="Rimuovi">✕</button></td>
+  </tr>`;
+}
+
+function templateRisRiga(voce, idx, r) {
+  return `<tr class="ris-row" data-idx="${idx}">
+    <td><input class="ris-desc" type="text" value="${esc(r?.descrizione||'')}" placeholder="Es. Operaio" oninput="renderCalcoli()"></td>
+    <td><input class="ris-um"   type="text" value="${esc(r?.um||'')}"   placeholder="ore" style="width:60px" oninput="renderCalcoli()"></td>
+    <td><input class="ris-q"    type="number" step="any" value="${r?.quantita??''}"       oninput="renderCalcoli()"></td>
+    <td><input class="ris-c"    type="number" step="any" value="${r?.costo_unitario??''}" oninput="renderCalcoli()"></td>
+    <td class="td-calc ris-tot">—</td>
+    <td class="td-delete"><button class="btn-danger" onclick="rimuoviRiga(this)" title="Rimuovi">✕</button></td>
+  </tr>`;
+}
+
+// ---------------------------------------------------------------------------
+// Aggiunta / rimozione righe
+// ---------------------------------------------------------------------------
+function aggiungiMis(voceId) {
+  const tbody = document.getElementById(`mis-tbody-${voceId}`);
+  const idx = tbody.querySelectorAll('.mis-row').length;
+  tbody.insertAdjacentHTML('beforeend', templateMisRiga(voceId, idx, null));
+  renderCalcoli();
+}
+
+function aggiungiRis(voceId) {
+  const tbody = document.getElementById(`ris-tbody-${voceId}`);
+  const idx = tbody.querySelectorAll('.ris-row').length;
+  tbody.insertAdjacentHTML('beforeend', templateRisRiga(voceId, idx, null));
+  renderCalcoli();
+}
+
+function rimuoviRiga(btn) {
+  btn.closest('tr').remove();
+  renderCalcoli();
+}
+
+function rimuoviVoce(id, evt) {
+  evt.stopPropagation();
+  document.querySelector(`[data-voce="${id}"]`).remove();
+  renderCalcoli();
+}
+
+// ---------------------------------------------------------------------------
+// Toggle accordeon voce
+// ---------------------------------------------------------------------------
+function toggleVoce(id) {
+  const body = document.getElementById(`body-${id}`);
+  const tog  = document.getElementById(`toggle-${id}`);
+  const open = body.style.display === 'none';
+  body.style.display = open ? 'block' : 'none';
+  tog.classList.toggle('open', open);
+}
+
+// ---------------------------------------------------------------------------
+// Render calcoli
+// ---------------------------------------------------------------------------
+function renderCalcoli() {
+  let totalePreventivo = 0;
+  let totaleCosti = 0;
+  document.querySelectorAll('[data-voce]').forEach(el => {
+    const id = el.dataset.voce;
+
+    // aggiorna quantità per ogni riga misurazione
+    el.querySelectorAll('.mis-row').forEach(row => {
+      const qdiretta = row.querySelector('.mis-qdiretta')?.value ?? '';
+      const usingDirect = qdiretta.trim() !== '';
+      const dimStyle = usingDirect ? 'opacity:0.3;pointer-events:none' : '';
+      ['mis-par_ug','mis-lung','mis-larg','mis-h_peso'].forEach(cls => {
+        const inp = row.querySelector(`.${cls}`);
+        if (inp) inp.style.cssText = dimStyle;
+      });
+      const mis = {
+        par_ug:           row.querySelector('.mis-par_ug')?.value,
+        lung:             row.querySelector('.mis-lung')?.value,
+        larg:             row.querySelector('.mis-larg')?.value,
+        h_peso:           row.querySelector('.mis-h_peso')?.value,
+        quantita_diretta: qdiretta,
+      };
+      const q = quantitaRiga(mis);
+      row.querySelector('.mis-qta').textContent = q > 0 ? fmt(q) : '—';
+    });
+
+    // aggiorna totale per ogni risorsa
+    el.querySelectorAll('.ris-row').forEach(row => {
+      const q = parseFloat(row.querySelector('.ris-q')?.value) || 0;
+      const c = parseFloat(row.querySelector('.ris-c')?.value) || 0;
+      const t = Math.round(q * c * 100) / 100;
+      row.querySelector('.ris-tot').textContent = t > 0 ? fmtEur(t) : '—';
+    });
+
+    // calcoli voce
+    const { qx, tc, cpu, ppu, imp, usingOverride } = calcVoce(id);
+    document.getElementById(`c-qx-${id}`).textContent  = qx  > 0 ? fmt(qx)    : '—';
+    document.getElementById(`c-tc-${id}`).textContent  = tc  > 0 ? fmtEur(tc)  : '—';
+    document.getElementById(`c-cpu-${id}`).innerHTML = cpu > 0
+      ? fmtEur(cpu) + (usingOverride ? ' <span class="badge-importato" title="Costo importato da PriMus">importato</span>' : '')
+      : '—';
+    document.getElementById(`c-ppu-${id}`).textContent = ppu > 0 ? fmtEur(ppu) : '—';
+    document.getElementById(`c-imp-${id}`).textContent = imp > 0 ? fmtEur(imp) : '—';
+
+    // summary nell'header
+    const um = el.querySelector('.voce-um')?.value || '';
+    document.getElementById(`summary-${id}`).textContent = imp > 0 ? fmtEur(imp) : '';
+
+    totalePreventivo += imp;
+    totaleCosti += Math.round(cpu * qx * 100) / 100;
+  });
+
+  document.getElementById('totale-costi').textContent = fmtEur(Math.round(totaleCosti * 100) / 100);
+  document.getElementById('totale-prev').textContent  = fmtEur(Math.round(totalePreventivo * 100) / 100);
+}
+
+// ---------------------------------------------------------------------------
+// Landing
+// ---------------------------------------------------------------------------
+function resetEditor() {
+  preventivoId = null;
+  voceCounter = 0;
+  document.getElementById('voci-container').innerHTML = '';
+  document.getElementById('nome').value = '';
+  document.getElementById('cliente').value = '';
+  document.getElementById('data').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('numero').value = '';
+  document.getElementById('ricarica_default').value = '20';
+  const badge = document.getElementById('idBadge');
+  badge.textContent = '';
+  badge.style.display = 'none';
+  renderCalcoli();
+}
+
+function iniziaNuovo() {
+  resetEditor();
+  document.getElementById('screen-landing').style.display = 'none';
+  document.getElementById('screen-editor').style.display = 'block';
+  document.getElementById('home-btn').style.display = 'inline-flex';
+}
+
+function tornaCasa() {
+  document.getElementById('screen-editor').style.display = 'none';
+  document.getElementById('screen-landing').style.display = 'block';
+  document.getElementById('home-btn').style.display = 'none';
+}
+
+async function importaDaPrimus(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const form = new FormData();
+  form.append('file', file);
+  mostraToast('Importazione in corso…');
+  try {
+    const r = await fetch('/api/preventivo/import/primus', { method: 'POST', body: form });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.detail || 'Errore sconosciuto');
+    }
+    const data = await r.json();
+    window.location = `/?id=${data.id}`;
+  } catch (e) {
+    mostraToast('Errore: ' + e.message, true);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Titolo header
+// ---------------------------------------------------------------------------
+function aggiornaTitolo() {}
+
+// ---------------------------------------------------------------------------
+// Salva
+// ---------------------------------------------------------------------------
+async function salva() {
+  const payload = raccogliPreventivo();
+  try {
+    let r;
+    if (preventivoId) {
+      r = await fetch(`/api/preventivo/${preventivoId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+    } else {
+      r = await fetch('/api/preventivo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+    }
+    if (!r.ok) throw new Error(await r.text());
+    const data = await r.json();
+    preventivoId = data.id;
+    const badge = document.getElementById('idBadge');
+    badge.textContent = `ID: ${preventivoId}`;
+    badge.style.display = 'inline';
+    mostraToast('Preventivo salvato ✓');
+  } catch (e) {
+    mostraToast('Errore: ' + e.message, true);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Esporta Primus
+// ---------------------------------------------------------------------------
+async function esportaPrimus() {
+  if (!preventivoId) {
+    await salva();
+    if (!preventivoId) return;
+  }
+  window.location = `/api/preventivo/${preventivoId}/export/primus`;
+  mostraToast('Download xlsx avviato ✓');
+}
+
+// ---------------------------------------------------------------------------
+// Carica preventivo da URL ?id=xxx
+// ---------------------------------------------------------------------------
+async function caricaDaUrl() {
+  const params = new URLSearchParams(location.search);
+  const id = params.get('id');
+  if (!id) return;
+  try {
+    const r = await fetch(`/api/preventivo/${id}`);
+    if (!r.ok) return;
+    const data = await r.json();
+    preventivoId = data.id;
+    document.getElementById('idBadge').textContent = `ID: ${preventivoId}`;
+    document.getElementById('idBadge').style.display = 'inline';
+    document.getElementById('nome').value    = data.nome || '';
+    document.getElementById('cliente').value = data.cliente || '';
+    document.getElementById('data').value    = data.data || '';
+    document.getElementById('numero').value  = data.numero || '';
+    document.getElementById('ricarica_default').value = (data.ricarica_default * 100).toFixed(0);
+    for (const v of (data.voci || [])) aggiungiVoce(v);
+    renderCalcoli();
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Util
+// ---------------------------------------------------------------------------
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function fmt(n) {
+  return Number(n).toLocaleString('it-IT', { maximumFractionDigits: 2 });
+}
+
+function fmtEur(n) {
+  return '€ ' + Number(n).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function mostraToast(msg, errore = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (errore ? ' error' : '');
+  setTimeout(() => t.className = 'toast', 2800);
+}
+
+// ---------------------------------------------------------------------------
+// Init
+// ---------------------------------------------------------------------------
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('data').value = new Date().toISOString().slice(0,10);
+  const params = new URLSearchParams(location.search);
+  if (params.get('id')) {
+    iniziaNuovo();
+    caricaDaUrl();
+  }
+});
+</script>
+</body>
+</html>

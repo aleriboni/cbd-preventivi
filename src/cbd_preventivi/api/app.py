@@ -1,0 +1,117 @@
+"""
+Entry point dell'applicazione FastAPI.
+
+Avvio in sviluppo:
+    uv run cbd-preventivi          (con reload automatico)
+    uv run uvicorn cbd_preventivi.api.app:app --reload
+
+Avvio dall'eseguibile compilato:
+    cbd-preventivi.exe             (apre il browser automaticamente)
+
+Gestione dei path:
+    - In sviluppo __file__ punta a src/cbd_preventivi/api/app.py;
+      il frontend è in <project_root>/frontend/
+    - Nell'exe PyInstaller sys._MEIPASS contiene tutti i file bundlati
+      (compresi i file del frontend copiati da --add-data)
+"""
+
+import sys
+import threading
+import time
+import webbrowser
+from pathlib import Path
+
+import uvicorn
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+
+from cbd_preventivi.api.routes import router
+
+
+# ---------------------------------------------------------------------------
+# Risoluzione path compatibile con PyInstaller
+# ---------------------------------------------------------------------------
+
+def _is_frozen() -> bool:
+    """True se l'applicazione è in esecuzione come eseguibile PyInstaller."""
+    return getattr(sys, "frozen", False)
+
+
+def _frontend_dir() -> Path:
+    """Percorso della directory frontend, corretto sia in sviluppo che da exe."""
+    if _is_frozen():
+        # PyInstaller estrae i file bundlati in sys._MEIPASS
+        return Path(sys._MEIPASS) / "frontend"
+    # Sviluppo: src/cbd_preventivi/api/app.py → 3 livelli su → project root
+    return Path(__file__).parents[3] / "frontend"
+
+
+# ---------------------------------------------------------------------------
+# Applicazione FastAPI
+# ---------------------------------------------------------------------------
+
+app = FastAPI(
+    title="CBD Preventivi",
+    description="Tool per la creazione e gestione di computi metrici edilizi",
+    version="0.1.0",
+)
+
+app.include_router(router)
+
+frontend = _frontend_dir()
+if frontend.exists():
+    app.mount("/", StaticFiles(directory=frontend, html=True), name="static")
+
+
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
+
+HOST = "127.0.0.1"
+PORT = 8000
+
+
+def _apri_browser(url: str, ritardo: float = 1.5) -> None:
+    """Apre il browser dopo un breve ritardo (lascia il tempo al server di avviarsi)."""
+    time.sleep(ritardo)
+    webbrowser.open(url)
+
+
+def serve(dev: bool = False) -> None:
+    """Avvia il server HTTP.
+
+    Args:
+        dev: se True abilita il reload automatico (solo per sviluppo,
+             incompatibile con PyInstaller).
+    """
+    if dev:
+        # Modalità sviluppo: stringa di import + reload
+        uvicorn.run(
+            "cbd_preventivi.api.app:app",
+            host=HOST,
+            port=PORT,
+            reload=True,
+        )
+    else:
+        # Modalità produzione / exe: oggetto app diretto, nessun reload.
+        # Apre il browser in un thread separato così il server parte prima.
+        url = f"http://{HOST}:{PORT}"
+        threading.Thread(target=_apri_browser, args=(url,), daemon=True).start()
+
+        config = uvicorn.Config(
+            app,
+            host=HOST,
+            port=PORT,
+            reload=False,
+            log_level="warning",
+        )
+        uvicorn.Server(config).run()
+
+
+def serve_dev() -> None:
+    """Entry point per ``uv run cbd-preventivi`` in sviluppo (con reload)."""
+    serve(dev=True)
+
+
+if __name__ == "__main__":
+    serve()
