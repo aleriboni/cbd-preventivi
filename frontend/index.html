@@ -265,6 +265,89 @@
     border: 1px solid #ffc107; border-radius: 3px; padding: 1px 4px;
     margin-left: 4px; vertical-align: middle;
   }
+
+  /* ---- riepilogo ---- */
+  #screen-recap { display: none; }
+  .recap-container { max-width: 1400px; margin: 0 auto; padding: 24px 16px 60px; }
+
+  .recap-header-bar {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 20px;
+  }
+  .recap-title { font-size: 20px; font-weight: 700; flex: 1; }
+  .recap-meta { font-size: 13px; color: #666; margin-bottom: 20px; display: flex; gap: 24px; flex-wrap: wrap; }
+  .recap-meta span { white-space: nowrap; }
+  .recap-meta strong { color: #1a1a2e; }
+
+  .recap-table-wrap { overflow-x: auto; }
+  .recap-table {
+    width: 100%; border-collapse: collapse; font-size: 13px;
+    background: #fff; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+  }
+  .recap-table thead th {
+    background: #1a1a2e; color: #fff;
+    padding: 10px 12px; text-align: right;
+    font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .4px;
+    white-space: nowrap;
+  }
+  .recap-table thead th:nth-child(3) { text-align: left; }
+  .recap-table thead th:first-child,
+  .recap-table thead th:nth-child(2) { text-align: center; }
+
+  .recap-row { cursor: pointer; transition: background .12s; }
+  .recap-row:hover { background: #f0f3ff; }
+  .recap-row td {
+    padding: 10px 12px; border-bottom: 1px solid #eef0f5;
+    text-align: right; vertical-align: middle;
+    font-variant-numeric: tabular-nums;
+  }
+  .recap-row td:first-child { text-align: center; color: #999; font-size: 12px; width: 28px; }
+  .recap-row td:nth-child(2) { text-align: center; font-weight: 600; color: #555; width: 80px; }
+  .recap-row td:nth-child(3) { text-align: left; font-weight: 500; }
+  .recap-row td.td-ric-custom { color: #3b6bff; font-weight: 600; }
+  .recap-row td.td-prezzo { color: #3b6bff; font-weight: 700; }
+
+  .recap-toggle-cell { width: 28px; text-align: center !important; color: #aaa; font-size: 11px; }
+  .recap-row.expanded .recap-toggle { transform: rotate(90deg); }
+  .recap-toggle { display: inline-block; transition: transform .15s; }
+
+  .recap-detail-row { background: #f8f9fb; }
+  .recap-detail-row td { padding: 0; border-bottom: 1px solid #e8eaf0; }
+  .recap-detail { padding: 12px 16px 16px 48px; }
+  .recap-detail-title {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .5px; color: #888; margin: 10px 0 6px;
+    padding-bottom: 4px; border-bottom: 1px solid #e4e6ed;
+  }
+  .recap-detail table {
+    width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 4px;
+  }
+  .recap-detail th {
+    text-align: right; padding: 4px 8px;
+    color: #888; font-weight: 600; font-size: 11px;
+    text-transform: uppercase; letter-spacing: .3px;
+    border-bottom: 1px solid #e4e6ed; background: none;
+  }
+  .recap-detail th:first-child { text-align: left; }
+  .recap-detail td {
+    padding: 4px 8px; border-bottom: 1px solid #f0f1f5;
+    text-align: right; color: #333;
+    font-variant-numeric: tabular-nums;
+  }
+  .recap-detail td:first-child { text-align: left; }
+  .recap-detail tr:last-child td { border-bottom: none; }
+
+  .recap-totale-row td {
+    padding: 12px 12px; background: #1a1a2e; color: #fff;
+    font-weight: 700; text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .recap-totale-row td:first-child,
+  .recap-totale-row td:nth-child(2),
+  .recap-totale-row td:nth-child(3) { text-align: left; }
+  .recap-totale-row td.td-prezzo { color: #7fb3ff; font-size: 15px; }
 </style>
 </head>
 <body>
@@ -357,8 +440,40 @@
 <div class="action-bar">
   <button class="btn btn-primary" onclick="salva()">💾 Salva</button>
   <button class="btn btn-success" onclick="esportaPrimus()">📤 Esporta Primus</button>
+  <button class="btn" style="background:#6c757d;color:#fff" onclick="apriRiepilogo()">📊 Riepilogo</button>
 </div>
 </div><!-- /screen-editor -->
+
+<!-- RIEPILOGO -->
+<div id="screen-recap">
+<div class="recap-container">
+  <div class="recap-header-bar">
+    <button class="btn-home" style="display:inline-flex" onclick="tornaEditorDaRiepilogo()">← Editor</button>
+    <div class="recap-title" id="recap-title">Riepilogo</div>
+  </div>
+  <div class="recap-meta" id="recap-meta"></div>
+  <div class="recap-table-wrap">
+    <table class="recap-table">
+      <thead>
+        <tr>
+          <th></th>
+          <th>Codice</th>
+          <th>Descrizione</th>
+          <th>UM</th>
+          <th>Q.tà</th>
+          <th>Costo/UM</th>
+          <th>Tot. costi</th>
+          <th>Ric. %</th>
+          <th>Prezzo/UM</th>
+          <th>Prezzo</th>
+          <th class="recap-toggle-cell"></th>
+        </tr>
+      </thead>
+      <tbody id="recap-tbody"></tbody>
+    </table>
+  </div>
+</div>
+</div><!-- /screen-recap -->
 
 <div class="toast" id="toast"></div>
 
@@ -881,6 +996,172 @@ function mostraToast(msg, errore = false) {
   t.textContent = msg;
   t.className = 'toast show' + (errore ? ' error' : '');
   setTimeout(() => t.className = 'toast', 2800);
+}
+
+// ---------------------------------------------------------------------------
+// Riepilogo
+// ---------------------------------------------------------------------------
+async function apriRiepilogo() {
+  if (!preventivoId) await salva();
+  if (!preventivoId) return; // salvataggio fallito
+  renderRiepilogo();
+  document.getElementById('screen-editor').style.display = 'none';
+  document.getElementById('screen-recap').style.display  = 'block';
+}
+
+function tornaEditorDaRiepilogo() {
+  document.getElementById('screen-recap').style.display  = 'none';
+  document.getElementById('screen-editor').style.display = 'block';
+}
+
+function toggleRigaRiepilogo(idx) {
+  const row     = document.getElementById(`recap-row-${idx}`);
+  const detail  = document.getElementById(`recap-detail-${idx}`);
+  const toggle  = document.getElementById(`recap-toggle-${idx}`);
+  if (!detail) return;
+  const aperto = detail.style.display !== 'none';
+  detail.style.display = aperto ? 'none' : 'table-row';
+  row.classList.toggle('expanded', !aperto);
+}
+
+function renderRiepilogo() {
+  const prev = raccogliPreventivo();
+  const ricDefault = prev.ricarica_default;
+
+  // header
+  document.getElementById('recap-title').textContent =
+    'Riepilogo' + (prev.nome ? ' — ' + prev.nome : '');
+  const meta = [];
+  if (prev.cliente) meta.push(`<span><strong>Cliente:</strong> ${esc(prev.cliente)}</span>`);
+  if (prev.data)    meta.push(`<span><strong>Data:</strong> ${esc(prev.data)}</span>`);
+  if (prev.numero)  meta.push(`<span><strong>N°:</strong> ${esc(prev.numero)}</span>`);
+  meta.push(`<span><strong>Ric. default:</strong> ${(ricDefault * 100).toFixed(0)}%</span>`);
+  document.getElementById('recap-meta').innerHTML = meta.join('');
+
+  const vociEls = Array.from(document.querySelectorAll('[data-voce]'));
+  let totCostiGlobale = 0;
+  let totPrezzoGlobale = 0;
+
+  const tbody = document.getElementById('recap-tbody');
+  tbody.innerHTML = '';
+
+  vociEls.forEach((el, i) => {
+    const voceId = el.dataset.voce;
+    const codice = el.querySelector('.voce-codice')?.value || '';
+    const desc   = el.querySelector('.voce-descrizione')?.value || '';
+    const um     = el.querySelector('.voce-um')?.value || '';
+
+    const { qx, tc, cpu, ppu, imp, usingPrezzoOverride } = calcVoce(voceId);
+
+    const ricInput = el.querySelector('.ricarica-voce')?.value.trim();
+    const ricVal   = ricInput !== '' ? parseFloat(ricInput) / 100 : ricDefault;
+    const ricPct   = (ricVal * 100).toFixed(0) + '%';
+    const ricCustom = ricInput !== '' && parseFloat(ricInput) / 100 !== ricDefault;
+
+    const totCosti = cpu > 0 && tc > 0 ? tc : (cpu > 0 ? Math.round(cpu * qx * 100) / 100 : 0);
+    totCostiGlobale  += totCosti;
+    totPrezzoGlobale += imp;
+
+    // misurazioni
+    const misurazioni = getMisurazioni(voceId).filter(m =>
+      m.par_ug || m.lung || m.larg || m.h_peso || m.quantita_diretta
+    );
+    // costi
+    const costi = getCosti(voceId).filter(c =>
+      c.descrizione || parseFloat(c.quantita) > 0
+    );
+    const haDetail = misurazioni.length > 0 || costi.length > 0;
+
+    const badge = usingPrezzoOverride
+      ? ' <span class="badge-importato">importato</span>' : '';
+
+    // riga principale
+    const tr = document.createElement('tr');
+    tr.className = 'recap-row';
+    tr.id = `recap-row-${i}`;
+    if (haDetail) tr.onclick = () => toggleRigaRiepilogo(i);
+    tr.innerHTML = `
+      <td>${i + 1}</td>
+      <td>${esc(codice)}</td>
+      <td>${esc(desc)}</td>
+      <td>${esc(um)}</td>
+      <td>${qx > 0 ? fmt(qx) : '—'}</td>
+      <td>${cpu > 0 && tc > 0 ? fmtEur(cpu) : '—'}</td>
+      <td>${totCosti > 0 ? fmtEur(totCosti) : '—'}</td>
+      <td class="${ricCustom ? 'td-ric-custom' : ''}">${ricPct}</td>
+      <td>${ppu > 0 ? fmtEur(ppu) + badge : '—'}</td>
+      <td class="td-prezzo">${imp > 0 ? fmtEur(imp) : '—'}</td>
+      <td class="recap-toggle-cell">${haDetail ? '<span class="recap-toggle" id="recap-toggle-'+i+'">▶</span>' : ''}</td>`;
+    tbody.appendChild(tr);
+
+    // riga dettaglio
+    if (haDetail) {
+      const trDetail = document.createElement('tr');
+      trDetail.className = 'recap-detail-row';
+      trDetail.id = `recap-detail-${i}`;
+      trDetail.style.display = 'none';
+
+      let detailHTML = '<td colspan="11"><div class="recap-detail">';
+
+      if (misurazioni.length > 0) {
+        detailHTML += `<div class="recap-detail-title">Misurazioni</div>
+          <table>
+            <thead><tr>
+              <th>Descrizione</th><th>Par.ug</th><th>Lung.</th>
+              <th>Larg.</th><th>H/peso</th><th>Q.tà dir.</th><th>Quantità</th>
+            </tr></thead><tbody>`;
+        misurazioni.forEach(m => {
+          const qRiga = quantitaRiga(m);
+          detailHTML += `<tr>
+            <td>${esc(m.descrizione||'')}</td>
+            <td>${m.par_ug||'—'}</td><td>${m.lung||'—'}</td>
+            <td>${m.larg||'—'}</td><td>${m.h_peso||'—'}</td>
+            <td>${m.quantita_diretta||'—'}</td>
+            <td><strong>${qRiga > 0 ? fmt(qRiga) : '—'}</strong></td>
+          </tr>`;
+        });
+        detailHTML += '</tbody></table>';
+      }
+
+      if (costi.length > 0) {
+        detailHTML += `<div class="recap-detail-title">Costi</div>
+          <table>
+            <thead><tr>
+              <th>Descrizione</th><th>UM</th><th>Q.tà</th>
+              <th>Costo unit.</th><th>Totale</th>
+            </tr></thead><tbody>`;
+        costi.forEach(c => {
+          const q = parseFloat(c.quantita) || 0;
+          const cu = parseFloat(c.costo_unitario) || 0;
+          const tot = Math.round(q * cu * 100) / 100;
+          detailHTML += `<tr>
+            <td>${esc(c.descrizione||'')}</td>
+            <td>${esc(c.um||'')}</td>
+            <td>${q > 0 ? fmt(q) : '—'}</td>
+            <td>${cu > 0 ? fmtEur(cu) : '—'}</td>
+            <td><strong>${tot > 0 ? fmtEur(tot) : '—'}</strong></td>
+          </tr>`;
+        });
+        detailHTML += '</tbody></table>';
+      }
+
+      detailHTML += '</div></td>';
+      trDetail.innerHTML = detailHTML;
+      tbody.appendChild(trDetail);
+    }
+  });
+
+  // riga totale
+  const trTot = document.createElement('tr');
+  trTot.className = 'recap-totale-row';
+  trTot.innerHTML = `
+    <td colspan="6">TOTALE</td>
+    <td>${totCostiGlobale > 0 ? fmtEur(Math.round(totCostiGlobale * 100) / 100) : '—'}</td>
+    <td></td>
+    <td></td>
+    <td class="td-prezzo">${fmtEur(Math.round(totPrezzoGlobale * 100) / 100)}</td>
+    <td></td>`;
+  tbody.appendChild(trTot);
 }
 
 // ---------------------------------------------------------------------------
