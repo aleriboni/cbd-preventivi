@@ -39,20 +39,17 @@ def totale_costi(voce: Voce) -> float:
 
 
 def costo_per_um(voce: Voce) -> float:
-    """Costo netto per unità di misura.
+    """Costo netto per unità di misura, calcolato solo dall'analisi costi.
 
-    Se ci sono voci di costo analitiche, divide il totale costi per la quantità.
-    Se invece è impostato ``prezzo_override`` (importato da PriMus) e non ci sono
-    costi analitici, lo usa come riferimento di costo (costo = prezzo importato).
+    Restituisce 0 se non ci sono voci di costo analitiche: il solo
+    ``prezzo_override`` non implica un costo netto noto.
     """
-    if voce.costi:
-        quantita = quantita_x(voce)
-        if quantita == 0:
-            return 0.0
-        return round(totale_costi(voce) / quantita, 6)
-    if voce.prezzo_override is not None:
-        return voce.prezzo_override
-    return 0.0
+    if not voce.costi:
+        return 0.0
+    quantita = quantita_x(voce)
+    if quantita == 0:
+        return 0.0
+    return round(totale_costi(voce) / quantita, 6)
 
 
 def prezzo_per_um(voce: Voce, preventivo: Preventivo) -> float:

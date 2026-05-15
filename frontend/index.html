@@ -36,7 +36,7 @@
     display: none;
   }
 
-  .container { max-width: 1100px; margin: 0 auto; padding: 24px 16px 80px; }
+  .container { max-width: 1400px; margin: 0 auto; padding: 24px 16px 80px; }
 
   /* ---- sezioni ---- */
   .section {
@@ -90,11 +90,13 @@
     background: #eef1f8;
     padding: 12px 14px;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 10px;
     cursor: pointer;
     user-select: none;
   }
+  .voce-header > * { margin-top: 4px; }
+  .voce-nr { margin-top: 8px !important; }
   .voce-header:hover { background: #e4e8f3; }
   .voce-nr {
     background: #3b6bff;
@@ -325,7 +327,7 @@
       <div class="grid grid-2" style="margin-top:12px; max-width:320px">
         <div class="field">
           <label>Ricarica default (%)</label>
-          <input id="ricarica_default" type="number" min="0" max="200" step="1" value="20" oninput="renderCalcoli()">
+          <input id="ricarica_default" type="number" min="0" max="200" step="1" value="0" oninput="renderCalcoli()">
         </div>
       </div>
     </div>
@@ -429,7 +431,7 @@ function calcVoce(voce) {
     cpu = qx > 0 ? tc / qx : 0;
     ppu = Math.round(cpu * (1 + ric) * 100) / 100;
   } else if (po !== null && !isNaN(po)) {
-    cpu = po;
+    cpu = 0;   // costo non noto, solo prezzo importato
     ppu = po;
     usingPrezzoOverride = true;
   } else {
@@ -521,7 +523,7 @@ function templateVoce(id, d) {
     <div class="voce-nr">${id}</div>
     <div class="voce-title">
       <input class="voce-codice" type="text" value="${d?.codice||''}" placeholder="COD" style="width:60px;margin-right:8px;font-weight:700" oninput="renderCalcoli()" onclick="event.stopPropagation()">
-      <input class="voce-descrizione" type="text" value="${d?.descrizione||''}" placeholder="Descrizione lavorazione" style="flex:1;min-width:180px" oninput="renderCalcoli()" onclick="event.stopPropagation()">
+      <textarea class="voce-descrizione" placeholder="Descrizione lavorazione" rows="2" style="flex:1;min-width:180px;resize:vertical;padding:4px 7px;border:1px solid #d0d3db;border-radius:4px;font-size:13px;font-family:inherit;line-height:1.4" oninput="renderCalcoli()" onclick="event.stopPropagation()">${esc(d?.descrizione||'')}</textarea>
     </div>
     <select class="voce-um" style="padding:5px 8px;border:1px solid #d0d3db;border-radius:5px;font-size:13px;width:90px;flex-shrink:0" onchange="renderCalcoli()" onclick="event.stopPropagation()">
       ${['mq','mc','ml','cad','a corpo'].map(u => `<option value="${u}" ${d?.um===u?'selected':''}>${u}</option>`).join('')}
@@ -536,7 +538,7 @@ function templateVoce(id, d) {
     </div>
     <div class="voce-econ-group">
       <div class="voce-econ-item"><span class="econ-label">Prezzo/UM</span><span class="econ-val" id="h-ppu-${id}">—</span></div>
-      <div class="voce-econ-item"><span class="econ-label">Tot. ric.</span><span class="econ-val highlight" id="h-imp-${id}">—</span></div>
+      <div class="voce-econ-item"><span class="econ-label">Prezzo</span><span class="econ-val highlight" id="h-imp-${id}">—</span></div>
     </div>
     <button class="btn-danger" onclick="rimuoviVoce(${id},event)" title="Elimina voce">✕</button>
     <span class="voce-toggle" id="toggle-${id}">▾</span>
@@ -602,7 +604,7 @@ function templateVoce(id, d) {
       <div class="calc-item"><span class="calc-label">Totale costi</span><span class="calc-value" id="c-tc-${id}">—</span></div>
       <div class="calc-item"><span class="calc-label">Costo / UM</span><span class="calc-value" id="c-cpu-${id}">—</span></div>
       <div class="calc-item"><span class="calc-label">Prezzo / UM</span><span class="calc-value" id="c-ppu-${id}">—</span></div>
-      <div class="calc-item"><span class="calc-label">Importo voce</span><span class="calc-value highlight" id="c-imp-${id}">—</span></div>
+      <div class="calc-item"><span class="calc-label">Prezzo</span><span class="calc-value highlight" id="c-imp-${id}">—</span></div>
     </div>
   </div>`;
 }
@@ -723,9 +725,7 @@ function renderCalcoli() {
     // valori header voce
     document.getElementById(`h-cpu-${id}`).textContent = cpu > 0 ? fmtEur(cpu) : '—';
     document.getElementById(`h-tc-${id}`).textContent  = tc  > 0 ? fmtEur(tc)  : (cpu > 0 ? fmtEur(Math.round(cpu * qx * 100) / 100) : '—');
-    document.getElementById(`h-ppu-${id}`).innerHTML   = ppu > 0
-      ? fmtEur(ppu) + (usingPrezzoOverride ? badge : '')
-      : '—';
+    document.getElementById(`h-ppu-${id}`).textContent = ppu > 0 ? fmtEur(ppu) : '—';
     document.getElementById(`h-imp-${id}`).textContent = imp > 0 ? fmtEur(imp) : '—';
 
     totalePreventivo += imp;
@@ -747,7 +747,7 @@ function resetEditor() {
   document.getElementById('cliente').value = '';
   document.getElementById('data').value = new Date().toISOString().slice(0, 10);
   document.getElementById('numero').value = '';
-  document.getElementById('ricarica_default').value = '20';
+  document.getElementById('ricarica_default').value = '0';
   const badge = document.getElementById('idBadge');
   badge.textContent = '';
   badge.style.display = 'none';
