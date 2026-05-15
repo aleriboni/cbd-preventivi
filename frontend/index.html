@@ -1035,7 +1035,6 @@ function renderRiepilogo() {
   if (prev.cliente) meta.push(`<span><strong>Cliente:</strong> ${esc(prev.cliente)}</span>`);
   if (prev.data)    meta.push(`<span><strong>Data:</strong> ${esc(prev.data)}</span>`);
   if (prev.numero)  meta.push(`<span><strong>N°:</strong> ${esc(prev.numero)}</span>`);
-  meta.push(`<span><strong>Ric. default:</strong> ${(ricDefault * 100).toFixed(0)}%</span>`);
   document.getElementById('recap-meta').innerHTML = meta.join('');
 
   const vociEls = Array.from(document.querySelectorAll('[data-voce]'));
