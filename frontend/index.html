@@ -107,7 +107,7 @@
     font-size: 12px; font-weight: 700;
     flex-shrink: 0;
   }
-  .voce-title { font-weight: 600; flex: 2; min-width: 0; }
+  .voce-title { font-weight: 600; flex: 4; min-width: 0; }
   .voce-econ-group { display: flex; gap: 14px; flex-shrink: 0; }
   .voce-econ-item { display: flex; flex-direction: column; align-items: flex-end; min-width: 72px; }
   .econ-label { font-size: 10px; color: #999; text-transform: uppercase; letter-spacing: .3px; line-height: 1.2; }
@@ -522,7 +522,7 @@ function templateVoce(id, d) {
   <div class="voce-header" onclick="toggleVoce(${id})">
     <div class="voce-nr">${id}</div>
     <div class="voce-title">
-      <input class="voce-codice" type="text" value="${d?.codice||''}" placeholder="COD" style="width:60px;margin-right:8px;font-weight:700" oninput="renderCalcoli()" onclick="event.stopPropagation()">
+      <input class="voce-codice" type="text" value="${d?.codice||''}" placeholder="COD" style="width:52px;margin-right:8px;font-weight:700;flex-shrink:0" oninput="renderCalcoli()" onclick="event.stopPropagation()">
       <textarea class="voce-descrizione" placeholder="Descrizione lavorazione" rows="2" style="flex:1;min-width:180px;resize:vertical;padding:4px 7px;border:1px solid #d0d3db;border-radius:4px;font-size:13px;font-family:inherit;line-height:1.4" oninput="renderCalcoli()" onclick="event.stopPropagation()">${esc(d?.descrizione||'')}</textarea>
     </div>
     <select class="voce-um" style="padding:5px 8px;border:1px solid #d0d3db;border-radius:5px;font-size:13px;width:90px;flex-shrink:0" onchange="renderCalcoli()" onclick="event.stopPropagation()">
