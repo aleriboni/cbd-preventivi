@@ -105,8 +105,12 @@
     font-size: 12px; font-weight: 700;
     flex-shrink: 0;
   }
-  .voce-title { font-weight: 600; flex: 1; }
-  .voce-summary { font-size: 12px; color: #888; margin-left: auto; }
+  .voce-title { font-weight: 600; flex: 2; min-width: 0; }
+  .voce-econ-group { display: flex; gap: 14px; flex-shrink: 0; }
+  .voce-econ-item { display: flex; flex-direction: column; align-items: flex-end; min-width: 72px; }
+  .econ-label { font-size: 10px; color: #999; text-transform: uppercase; letter-spacing: .3px; line-height: 1.2; }
+  .econ-val { font-size: 13px; font-weight: 600; color: #1a1a2e; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .econ-val.highlight { color: #3b6bff; }
   .voce-toggle { color: #888; font-size: 18px; transition: transform .2s; }
   .voce-toggle.open { transform: rotate(180deg); }
   .voce-body { padding: 16px; border-top: 1px solid #dde1ea; }
@@ -398,7 +402,7 @@ function quantitaX(voce) {
 }
 
 function totaleCosti(voce) {
-  return Math.round(getRisorse(voce).reduce((s, r) => {
+  return Math.round(getCosti(voce).reduce((s, r) => {
     const q = parseFloat(r.quantita) || 0;
     const c = parseFloat(r.costo_unitario) || 0;
     return s + q * c;
@@ -417,20 +421,24 @@ function calcVoce(voce) {
   const tc = totaleCosti(voce);
   const ric = ricaRicaEffettiva(voce);
 
-  const coEl = document.querySelector(`[data-voce="${voce}"] .costo-override`);
-  const co = coEl && coEl.value !== '' ? parseFloat(coEl.value) : null;
+  const poEl = document.querySelector(`[data-voce="${voce}"] .prezzo-override`);
+  const po = poEl && poEl.value !== '' ? parseFloat(poEl.value) : null;
 
-  let cpu, usingOverride = false;
-  if (co !== null && !isNaN(co) && tc === 0) {
-    cpu = co;
-    usingOverride = true;
-  } else {
+  let cpu, ppu, usingPrezzoOverride = false;
+  if (tc > 0) {
     cpu = qx > 0 ? tc / qx : 0;
+    ppu = Math.round(cpu * (1 + ric) * 100) / 100;
+  } else if (po !== null && !isNaN(po)) {
+    cpu = po;
+    ppu = po;
+    usingPrezzoOverride = true;
+  } else {
+    cpu = 0;
+    ppu = 0;
   }
 
-  const ppu = Math.round(cpu * (1 + ric) * 100) / 100;
   const imp = Math.round(ppu * qx * 100) / 100;
-  return { qx, tc, cpu: Math.round(cpu * 100) / 100, ppu, imp, usingOverride };
+  return { qx, tc, cpu: Math.round(cpu * 100) / 100, ppu: Math.round(ppu * 100) / 100, imp, usingPrezzoOverride };
 }
 
 // ---------------------------------------------------------------------------
@@ -448,7 +456,7 @@ function getMisurazioni(voceId) {
   }));
 }
 
-function getRisorse(voceId) {
+function getCosti(voceId) {
   const rows = document.querySelectorAll(`[data-voce="${voceId}"] .ris-row`);
   return Array.from(rows).map(row => ({
     descrizione:    row.querySelector('.ris-desc')?.value || '',
@@ -469,9 +477,9 @@ function raccogliPreventivo() {
       um:          el.querySelector('.voce-um').value,
       ricarica:    ricInput !== '' ? parseFloat(ricInput) / 100 : null,
       quantita_manuale: parseFloat(el.querySelector('.quantita-manuale')?.value) || null,
-      costo_override: (() => { const s = el.querySelector('.costo-override')?.value; const n = parseFloat(s); return s && !isNaN(n) ? n : null; })(),
+      prezzo_override: (() => { const s = el.querySelector('.prezzo-override')?.value; const n = parseFloat(s); return s && !isNaN(n) ? n : null; })(),
       misurazioni: getMisurazioni(v),
-      risorse: getRisorse(v),
+      costi: getCosti(v),
     };
   });
   return {
@@ -504,7 +512,7 @@ function aggiungiVoce(dati) {
 
 function templateVoce(id, d) {
   const mis = d?.misurazioni || [];
-  const ris = d?.risorse || [];
+  const costi = d?.costi || [];
   const ricaricaVal = d?.ricarica != null ? (d.ricarica * 100).toFixed(0) : '';
   const qManuale = d?.quantita_manuale ?? '';
 
@@ -513,21 +521,28 @@ function templateVoce(id, d) {
     <div class="voce-nr">${id}</div>
     <div class="voce-title">
       <input class="voce-codice" type="text" value="${d?.codice||''}" placeholder="COD" style="width:60px;margin-right:8px;font-weight:700" oninput="renderCalcoli()" onclick="event.stopPropagation()">
-      <input class="voce-descrizione" type="text" value="${d?.descrizione||''}" placeholder="Descrizione lavorazione" style="width:360px" oninput="renderCalcoli()" onclick="event.stopPropagation()">
+      <input class="voce-descrizione" type="text" value="${d?.descrizione||''}" placeholder="Descrizione lavorazione" style="flex:1;min-width:180px" oninput="renderCalcoli()" onclick="event.stopPropagation()">
     </div>
-    <select class="voce-um" style="padding:5px 8px;border:1px solid #d0d3db;border-radius:5px;font-size:13px;width:90px" onchange="renderCalcoli()" onclick="event.stopPropagation()">
+    <select class="voce-um" style="padding:5px 8px;border:1px solid #d0d3db;border-radius:5px;font-size:13px;width:90px;flex-shrink:0" onchange="renderCalcoli()" onclick="event.stopPropagation()">
       ${['mq','mc','ml','cad','a corpo'].map(u => `<option value="${u}" ${d?.um===u?'selected':''}>${u}</option>`).join('')}
     </select>
-    <div style="display:flex;align-items:center;gap:4px;font-size:13px" onclick="event.stopPropagation()">
-      <span style="color:#888">Ric.%</span>
-      <input class="ricarica-voce" type="number" min="0" max="200" value="${ricaricaVal}" placeholder="—" style="width:54px;padding:5px 7px;border:1px solid #d0d3db;border-radius:5px;font-size:13px" oninput="renderCalcoli()">
+    <div class="voce-econ-group">
+      <div class="voce-econ-item"><span class="econ-label">Costo/UM</span><span class="econ-val" id="h-cpu-${id}">—</span></div>
+      <div class="voce-econ-item"><span class="econ-label">Tot. costi</span><span class="econ-val" id="h-tc-${id}">—</span></div>
     </div>
-    <span class="voce-summary" id="summary-${id}"></span>
+    <div style="display:flex;align-items:center;gap:4px;font-size:12px;flex-shrink:0" onclick="event.stopPropagation()">
+      <span style="color:#999">Ric.%</span>
+      <input class="ricarica-voce" type="number" min="0" max="200" value="${ricaricaVal}" placeholder="—" style="width:48px;padding:4px 6px;border:1px solid #d0d3db;border-radius:5px;font-size:12px" oninput="renderCalcoli()">
+    </div>
+    <div class="voce-econ-group">
+      <div class="voce-econ-item"><span class="econ-label">Prezzo/UM</span><span class="econ-val" id="h-ppu-${id}">—</span></div>
+      <div class="voce-econ-item"><span class="econ-label">Tot. ric.</span><span class="econ-val highlight" id="h-imp-${id}">—</span></div>
+    </div>
     <button class="btn-danger" onclick="rimuoviVoce(${id},event)" title="Elimina voce">✕</button>
     <span class="voce-toggle" id="toggle-${id}">▾</span>
   </div>
   <div class="voce-body" id="body-${id}" style="display:none">
-  <input type="hidden" class="costo-override" value="${d?.costo_override ?? ''}">
+  <input type="hidden" class="prezzo-override" value="${d?.prezzo_override ?? ''}">
 
     <!-- MISURAZIONI -->
     <div class="sub-section">
@@ -558,9 +573,9 @@ function templateVoce(id, d) {
       </div>
     </div>
 
-    <!-- RISORSE -->
+    <!-- COSTI -->
     <div class="sub-section">
-      <div class="sub-title">Risorse (analisi costi)</div>
+      <div class="sub-title">Costi</div>
       <div class="tbl-wrap">
         <table>
           <thead>
@@ -574,11 +589,11 @@ function templateVoce(id, d) {
             </tr>
           </thead>
           <tbody id="ris-tbody-${id}">
-            ${ris.map((r,i) => templateRisRiga(id, i, r)).join('')}
+            ${costi.map((r,i) => templateRisRiga(id, i, r)).join('')}
           </tbody>
         </table>
       </div>
-      <button class="btn-add" onclick="aggiungiRis(${id})">+ Aggiungi risorsa</button>
+      <button class="btn-add" onclick="aggiungiRis(${id})">+ Aggiungi costo</button>
     </div>
 
     <!-- CALCOLI -->
@@ -695,18 +710,23 @@ function renderCalcoli() {
     });
 
     // calcoli voce
-    const { qx, tc, cpu, ppu, imp, usingOverride } = calcVoce(id);
+    const { qx, tc, cpu, ppu, imp, usingPrezzoOverride } = calcVoce(id);
+    const badge = ' <span class="badge-importato" title="Prezzo importato da PriMus">importato</span>';
     document.getElementById(`c-qx-${id}`).textContent  = qx  > 0 ? fmt(qx)    : '—';
     document.getElementById(`c-tc-${id}`).textContent  = tc  > 0 ? fmtEur(tc)  : '—';
-    document.getElementById(`c-cpu-${id}`).innerHTML = cpu > 0
-      ? fmtEur(cpu) + (usingOverride ? ' <span class="badge-importato" title="Costo importato da PriMus">importato</span>' : '')
+    document.getElementById(`c-cpu-${id}`).textContent = cpu > 0 ? fmtEur(cpu) : '—';
+    document.getElementById(`c-ppu-${id}`).innerHTML   = ppu > 0
+      ? fmtEur(ppu) + (usingPrezzoOverride ? badge : '')
       : '—';
-    document.getElementById(`c-ppu-${id}`).textContent = ppu > 0 ? fmtEur(ppu) : '—';
     document.getElementById(`c-imp-${id}`).textContent = imp > 0 ? fmtEur(imp) : '—';
 
-    // summary nell'header
-    const um = el.querySelector('.voce-um')?.value || '';
-    document.getElementById(`summary-${id}`).textContent = imp > 0 ? fmtEur(imp) : '';
+    // valori header voce
+    document.getElementById(`h-cpu-${id}`).textContent = cpu > 0 ? fmtEur(cpu) : '—';
+    document.getElementById(`h-tc-${id}`).textContent  = tc  > 0 ? fmtEur(tc)  : (cpu > 0 ? fmtEur(Math.round(cpu * qx * 100) / 100) : '—');
+    document.getElementById(`h-ppu-${id}`).innerHTML   = ppu > 0
+      ? fmtEur(ppu) + (usingPrezzoOverride ? badge : '')
+      : '—';
+    document.getElementById(`h-imp-${id}`).textContent = imp > 0 ? fmtEur(imp) : '—';
 
     totalePreventivo += imp;
     totaleCosti += Math.round(cpu * qx * 100) / 100;

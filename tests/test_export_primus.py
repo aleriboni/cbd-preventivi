@@ -11,7 +11,7 @@ import io
 import openpyxl
 import pytest
 
-from cbd_preventivi.models import Preventivo, Voce, RigaMisurazione, RigaRisorsa
+from cbd_preventivi.models import Preventivo, Voce, RigaMisurazione, RigaCosto
 from cbd_preventivi.primus.export import genera_xlsx, PRIMA_RIGA_DATI
 from cbd_preventivi.calcoli import quantita_x, prezzo_per_um
 
@@ -262,7 +262,7 @@ class TestCalcoliMisurazioni:
                     RigaMisurazione(lung=5.0, larg=0.12, h_peso=3.3),
                     RigaMisurazione(),  # riga vuota
                 ],
-                risorse=[RigaRisorsa(descrizione="op", um="ore", quantita=1, costo_unitario=1)],
+                costi=[RigaCosto(descrizione="op", um="ore", quantita=1, costo_unitario=1)],
             )
         ])
         ws = openpyxl.load_workbook(io.BytesIO(genera_xlsx(prev)))["Computo metrico"]
@@ -286,7 +286,7 @@ class TestQuantitaManuale:
                 codice="001", descrizione="A corpo", um="a corpo",
                 quantita_manuale=5.0,
                 misurazioni=[],
-                risorse=[RigaRisorsa(descrizione="op", um="ore", quantita=1, costo_unitario=100)],
+                costi=[RigaCosto(descrizione="op", um="ore", quantita=1, costo_unitario=100)],
             )
         ])
         ws = openpyxl.load_workbook(io.BytesIO(genera_xlsx(prev)))["Computo metrico"]
@@ -300,7 +300,7 @@ class TestQuantitaManuale:
             codice="001", descrizione="A corpo", um="a corpo",
             quantita_manuale=1.0,
             misurazioni=[],
-            risorse=[RigaRisorsa(descrizione="op", um="ore", quantita=2, costo_unitario=20)],
+            costi=[RigaCosto(descrizione="op", um="ore", quantita=2, costo_unitario=20)],
         )
         preventivo.voci.append(voce)
         assert quantita_x(voce) == 1.0
@@ -313,9 +313,9 @@ class TestQuantitaManuale:
         voce = Voce(
             codice="001", descrizione="Test", um="mc",
             misurazioni=[RigaMisurazione(lung=5.0, larg=2.0, h_peso=3.0)],  # 30 mc
-            risorse=[
-                RigaRisorsa(descrizione="Operaio",   um="ore", quantita=10, costo_unitario=31.0),
-                RigaRisorsa(descrizione="Autocarro", um="ore", quantita=5,  costo_unitario=65.0),
+            costi=[
+                RigaCosto(descrizione="Operaio",   um="ore", quantita=10, costo_unitario=31.0),
+                RigaCosto(descrizione="Autocarro", um="ore", quantita=5,  costo_unitario=65.0),
             ],
         )
         preventivo.voci.append(voce)

@@ -19,7 +19,7 @@ from typing import Optional
 
 from openpyxl import load_workbook
 
-from cbd_preventivi.models import Preventivo, Voce, RigaMisurazione
+from cbd_preventivi.models import Preventivo, Voce, RigaMisurazione, RigaCosto
 
 
 # Indici colonna (1-based)
@@ -55,18 +55,18 @@ def _a_stringa(valore) -> str:
 
 
 def _leggi_sommano(voce_corrente: dict, testo_d: str, valore_j) -> None:
-    """Estrae UM e costo unitario dalla riga SOMMANO.
+    """Estrae UM e prezzo unitario dalla riga SOMMANO.
 
-    Il testo in D è del tipo «SOMMANO mq»; il valore in J è il costo/UM
-    così come appare in PriMus (senza ricarica).
+    Il testo in D è del tipo «SOMMANO mq»; il valore in J è il prezzo/UM
+    finito (con ricarica) così come appare in PriMus.
     """
     parti = testo_d.split()
     if len(parti) > 1:
         um_primus = parti[1].lower()
         voce_corrente["um"] = _MAPPA_UM.get(um_primus, parti[1])
-    costo = _a_float(valore_j)
-    if costo is not None:
-        voce_corrente["costo_override"] = costo
+    prezzo = _a_float(valore_j)
+    if prezzo is not None:
+        voce_corrente["prezzo_override"] = prezzo
 
 
 def _salva_voce(lista_voci: list[Voce], voce_corrente: dict) -> None:
@@ -94,7 +94,7 @@ def _salva_voce(lista_voci: list[Voce], voce_corrente: dict) -> None:
         codice=voce_corrente["codice"],
         descrizione=voce_corrente["descrizione"],
         um=voce_corrente.get("um", ""),
-        costo_override=voce_corrente.get("costo_override"),
+        prezzo_override=voce_corrente.get("prezzo_override"),
         quantita_manuale=quantita_manuale,
         misurazioni=misurazioni,
     ))
@@ -144,7 +144,7 @@ def parse_primus_xlsx(contenuto_file: bytes) -> Preventivo:
                     "codice": _a_stringa(val_c),
                     "descrizione": testo_d,
                     "um": "",
-                    "costo_override": None,
+                    "prezzo_override": None,
                     "misurazioni": [],
                 }
                 stato = "in_header"

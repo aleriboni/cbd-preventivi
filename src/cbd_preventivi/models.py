@@ -3,7 +3,7 @@ Modelli di dominio per il computo metrico edilizio.
 
 Ogni classe rappresenta un concetto del dominio:
   - RigaMisurazione: una riga della lista misurazioni di una voce
-  - RigaRisorsa: una risorsa (manodopera, materiale, nolo) nell'analisi costi
+  - RigaCosto: una voce di costo (manodopera, materiale, nolo) nell'analisi costi
   - Voce: una singola lavorazione del computo
   - Preventivo: il documento completo con intestazione e lista voci
 """
@@ -53,8 +53,8 @@ class RigaMisurazione(BaseModel):
         return self.quantita == 0.0 and not self.descrizione.strip()
 
 
-class RigaRisorsa(BaseModel):
-    """Una risorsa nell'analisi costi di una voce (operaio, materiale, nolo, ecc.)."""
+class RigaCosto(BaseModel):
+    """Una voce di costo nell'analisi costi di una lavorazione (operaio, materiale, nolo, ecc.)."""
 
     descrizione: str
     um: str = ""
@@ -63,7 +63,7 @@ class RigaRisorsa(BaseModel):
 
     @property
     def totale(self) -> float:
-        """Costo totale della risorsa: quantità × costo unitario."""
+        """Costo totale della voce: quantità × costo unitario."""
         return round(self.quantita * self.costo_unitario, 2)
 
 
@@ -71,8 +71,8 @@ class Voce(BaseModel):
     """Una lavorazione del computo metrico.
 
     Può avere misurazioni esplicite oppure una quantità manuale.
-    Il costo unitario può provenire dall'analisi risorse oppure essere
-    importato direttamente da PriMus (``costo_override``).
+    Il prezzo unitario può provenire dall'analisi costi oppure essere
+    importato direttamente da PriMus (``prezzo_override``).
     """
 
     codice: str
@@ -80,9 +80,9 @@ class Voce(BaseModel):
     um: str
     ricarica: Optional[float] = None
     quantita_manuale: Optional[float] = None
-    costo_override: Optional[float] = None
+    prezzo_override: Optional[float] = None
     misurazioni: list[RigaMisurazione] = Field(default_factory=list)
-    risorse: list[RigaRisorsa] = Field(default_factory=list)
+    costi: list[RigaCosto] = Field(default_factory=list)
 
 
 class Preventivo(BaseModel):

@@ -5,7 +5,7 @@ Struttura per ogni voce (colonne A→N, 1-based):
   A: vuota (spacing)
   B: Nr.Ord.  C: TARIFFA  D: DESIGNAZIONE  E: Par.ug  F: Lung.  G: Larg.  H: H/peso
   I: Quantità (formula ROUND/PRODUCT o valore diretto)
-  J: Prezzo unitario (costo netto, senza ricarica)
+  J: Prezzo unitario (prezzo finito con ricarica)
   K: TOTALE (formula ROUND/PRODUCT)
   L, M, N: ClDes, ClQT, Linha (metadati nascosti PriMus)
 
@@ -14,7 +14,7 @@ Sequenza righe per ciascuna voce:
   2. Label misurazioni   → D='M I S U R A Z I O N I:'
   3..n. Righe misurazioni → D=desc, E-H=fattori, I=ROUND(PRODUCT(...),2)
   n+1. Riga marker       → N="3'"
-  n+2. Riga SOMMANO      → D='SOMMANO [um]', I=ROUND(SUM(...),2), J=costo, K=ROUND(PRODUCT(...),2)
+  n+2. Riga SOMMANO      → D='SOMMANO [um]', I=ROUND(SUM(...),2), J=prezzo, K=ROUND(PRODUCT(...),2)
   n+3. Riga separatore   → D=''
 
 Righe finali:
@@ -41,7 +41,7 @@ from openpyxl import Workbook
 from openpyxl.cell import Cell
 
 from cbd_preventivi.models import Preventivo
-from cbd_preventivi.calcoli import costo_per_um
+from cbd_preventivi.calcoli import prezzo_per_um
 
 
 # Indici colonna (1-based)
@@ -117,7 +117,7 @@ def _imposta_colonne(foglio) -> None:
         foglio.column_dimensions[lettera].hidden = nascosta
 
 
-def _scrivi_voce(foglio, indice_voce: int, voce, costo_unitario: float, riga_corrente: int) -> int:
+def _scrivi_voce(foglio, indice_voce: int, voce, prezzo_unitario: float, riga_corrente: int) -> int:
     """Scrive tutte le righe di una voce a partire da ``riga_corrente``.
 
     Returns:
@@ -186,7 +186,7 @@ def _scrivi_voce(foglio, indice_voce: int, voce, costo_unitario: float, riga_cor
     _cella(foglio, riga_sommano, COL_D).value = f"SOMMANO {voce.um}"
     _scrivi_formula(foglio, riga_sommano, COL_I,
                     f"=ROUND(SUM(I{riga_label_mis}:I{riga_marker}),2)")
-    _cella(foglio, riga_sommano, COL_J).value = costo_unitario
+    _cella(foglio, riga_sommano, COL_J).value = prezzo_unitario
     _scrivi_formula(foglio, riga_sommano, COL_K,
                     f"=ROUND(PRODUCT(I{riga_sommano}:J{riga_sommano}),2)")
 
@@ -338,8 +338,8 @@ def genera_xlsx(preventivo: Preventivo) -> bytes:
 
     riga_corrente = PRIMA_RIGA_DATI
     for indice, voce in enumerate(preventivo.voci):
-        costo = costo_per_um(voce)
-        riga_corrente = _scrivi_voce(foglio, indice, voce, costo, riga_corrente)
+        prezzo = prezzo_per_um(voce, preventivo)
+        riga_corrente = _scrivi_voce(foglio, indice, voce, prezzo, riga_corrente)
 
     _scrivi_footer(foglio, riga_corrente)
 

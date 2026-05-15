@@ -6,9 +6,9 @@ sui modelli di dominio definiti in ``models``.
 
 Gerarchia dei calcoli:
   quantita_x      → somma delle quantità delle misurazioni (o quantita_manuale)
-  totale_costi    → somma dei costi di tutte le risorse
-  costo_per_um    → costo_override se disponibile, altrimenti totale_costi / quantita_x
-  prezzo_per_um   → costo_per_um × (1 + ricarica)
+  totale_costi    → somma dei costi di tutte le voci di costo
+  costo_per_um    → totale_costi / quantita_x, oppure prezzo_override se nessun costo
+  prezzo_per_um   → costo_per_um × (1 + ricarica), oppure prezzo_override diretto
   importo_voce    → prezzo_per_um × quantita_x
   totale_preventivo → somma degli importi di tutte le voci
 """
@@ -34,29 +34,41 @@ def quantita_x(voce: Voce) -> float:
 
 
 def totale_costi(voce: Voce) -> float:
-    """Somma dei costi di tutte le risorse della voce."""
-    return round(sum(risorsa.totale for risorsa in voce.risorse), 2)
+    """Somma dei costi di tutte le voci di costo della lavorazione."""
+    return round(sum(costo.totale for costo in voce.costi), 2)
 
 
 def costo_per_um(voce: Voce) -> float:
     """Costo netto per unità di misura.
 
-    Usa ``costo_override`` (importato da PriMus) se non ci sono risorse
-    analitiche; altrimenti divide il totale costi per la quantità.
+    Se ci sono voci di costo analitiche, divide il totale costi per la quantità.
+    Se invece è impostato ``prezzo_override`` (importato da PriMus) e non ci sono
+    costi analitici, lo usa come riferimento di costo (costo = prezzo importato).
     """
-    if voce.costo_override is not None and not voce.risorse:
-        return voce.costo_override
-    quantita = quantita_x(voce)
-    if quantita == 0:
-        return 0.0
-    return round(totale_costi(voce) / quantita, 6)
+    if voce.costi:
+        quantita = quantita_x(voce)
+        if quantita == 0:
+            return 0.0
+        return round(totale_costi(voce) / quantita, 6)
+    if voce.prezzo_override is not None:
+        return voce.prezzo_override
+    return 0.0
 
 
 def prezzo_per_um(voce: Voce, preventivo: Preventivo) -> float:
-    """Prezzo di vendita per unità di misura (costo + ricarica)."""
-    costo = costo_per_um(voce)
-    ricarica = ricarica_effettiva(voce, preventivo)
-    return round(costo * (1 + ricarica), 2)
+    """Prezzo di vendita per unità di misura.
+
+    Se ci sono voci di costo, applica la ricarica al costo calcolato.
+    Se è impostato solo ``prezzo_override``, lo usa direttamente senza
+    applicare la ricarica (il prezzo è già quello finale importato da PriMus).
+    """
+    if voce.costi:
+        costo = costo_per_um(voce)
+        ricarica = ricarica_effettiva(voce, preventivo)
+        return round(costo * (1 + ricarica), 2)
+    if voce.prezzo_override is not None:
+        return voce.prezzo_override
+    return 0.0
 
 
 def importo_voce(voce: Voce, preventivo: Preventivo) -> float:
