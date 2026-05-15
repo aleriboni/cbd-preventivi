@@ -15,6 +15,7 @@ Gestione dei path:
       (compresi i file del frontend copiati da --add-data)
 """
 
+import socket
 import sys
 import threading
 import time
@@ -85,6 +86,12 @@ HOST = "127.0.0.1"
 PORT = 8000
 
 
+def _porta_in_uso(host: str, porta: int) -> bool:
+    """True se qualcosa è già in ascolto su host:porta."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex((host, porta)) == 0
+
+
 def _apri_browser(url: str, ritardo: float = 1.5) -> None:
     """Apre il browser dopo un breve ritardo (lascia il tempo al server di avviarsi)."""
     time.sleep(ritardo)
@@ -108,13 +115,20 @@ def serve(dev: bool = False) -> None:
         )
     else:
         # Modalità produzione / exe: oggetto app diretto, nessun reload.
+        url = f"http://{HOST}:{PORT}"
+
+        # Se il server è già in ascolto (istanza precedente ancora attiva),
+        # apre solo il browser senza tentare di rifare il bind sulla porta.
+        if _porta_in_uso(HOST, PORT):
+            webbrowser.open(url)
+            return
+
         # Quando --noconsole è attivo stdout/stderr sono None: li redirigiamo
         # su file prima che uvicorn configuri il logging.
         if _is_frozen() and sys.stdout is None:
             _redirect_output_to_file()
 
         # Apre il browser in un thread separato così il server parte prima.
-        url = f"http://{HOST}:{PORT}"
         threading.Thread(target=_apri_browser, args=(url,), daemon=True).start()
 
         config = uvicorn.Config(
