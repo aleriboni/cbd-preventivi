@@ -2,9 +2,11 @@
 Endpoint REST per la gestione dei preventivi.
 
 Percorsi disponibili:
+  GET    /api/preventivi                       → lista di tutti i preventivi
   POST   /api/preventivo                       → crea un nuovo preventivo
   GET    /api/preventivo/{id}                  → carica un preventivo esistente
   PUT    /api/preventivo/{id}                  → aggiorna un preventivo esistente
+  DELETE /api/preventivo/{id}                  → elimina un preventivo
   POST   /api/preventivo/import/primus         → importa un preventivo da xlsx PriMus
   GET    /api/preventivo/{id}/export/primus    → esporta il preventivo in xlsx PriMus
 
@@ -66,6 +68,20 @@ def _salva(preventivo: Preventivo) -> None:
 # Endpoints
 # ---------------------------------------------------------------------------
 
+@router.get("/preventivi")
+def lista_preventivi():
+    """Restituisce la lista di tutti i preventivi, ordinata per data di modifica (più recente prima)."""
+    files = sorted(DATA_DIR.glob("*.json"), key=lambda f: f.stat().st_mtime, reverse=True)
+    result = []
+    for f in files:
+        try:
+            prev = Preventivo.model_validate_json(f.read_text())
+            result.append({"id": prev.id, "nome": prev.nome, "data": prev.data})
+        except Exception:
+            pass
+    return result
+
+
 @router.post("/preventivo", response_model=Preventivo, status_code=201)
 def crea_preventivo(preventivo: Preventivo):
     """Crea un nuovo preventivo e lo salva su disco."""
@@ -87,6 +103,15 @@ def aggiorna_preventivo(id_preventivo: str, preventivo: Preventivo):
     preventivo.id = id_preventivo
     _salva(preventivo)
     return preventivo
+
+
+@router.delete("/preventivo/{id_preventivo}", status_code=204)
+def elimina_preventivo(id_preventivo: str):
+    """Elimina un preventivo dal disco."""
+    percorso = _percorso_preventivo(id_preventivo)
+    if not percorso.exists():
+        raise HTTPException(status_code=404, detail="Preventivo non trovato")
+    percorso.unlink()
 
 
 @router.post("/preventivo/import/primus", status_code=201)

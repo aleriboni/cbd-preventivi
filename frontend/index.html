@@ -266,6 +266,41 @@
     margin-left: 4px; vertical-align: middle;
   }
 
+  /* ---- lista preventivi ---- */
+  .lista-container { max-width: 900px; margin: 40px auto; padding: 0 16px; }
+  .lista-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  .lista-header h2 { font-size: 22px; font-weight: 700; }
+  .lista-actions { display: flex; gap: 10px; }
+  .lista-empty { text-align: center; padding: 60px 0; color: #888; font-size: 15px; }
+  .lista-table {
+    width: 100%; border-collapse: collapse; font-size: 13px;
+    background: #fff; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+  }
+  .lista-table thead th {
+    background: #1a1a2e; color: #fff;
+    padding: 10px 16px; text-align: left;
+    font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .4px;
+  }
+  .lista-table thead th:last-child { width: 160px; text-align: right; }
+  .lista-row td {
+    padding: 12px 16px; border-bottom: 1px solid #eef0f5; vertical-align: middle;
+  }
+  .lista-row:last-child td { border-bottom: none; }
+  .lista-row:hover { background: #f5f7ff; }
+  .lista-row td:first-child { font-weight: 600; }
+  .lista-row td:nth-child(2) { color: #666; font-size: 12px; }
+  .lista-row td:last-child { text-align: right; white-space: nowrap; }
+  .btn-sm { padding: 4px 10px; font-size: 12px; border-radius: 5px; border: none; cursor: pointer; font-weight: 500; }
+  .btn-open { background: #e8f0ff; color: #3b6bff; }
+  .btn-open:hover { background: #d0e0ff; }
+  .btn-del { background: #fde8e8; color: #c0392b; margin-left: 6px; }
+  .btn-del:hover { background: #fbd0d0; }
+
   /* ---- riepilogo ---- */
   #screen-recap { display: none; }
   .recap-container { max-width: 1400px; margin: 0 auto; padding: 24px 16px 60px; }
@@ -360,24 +395,32 @@
   <span class="id-badge" id="idBadge"></span>
 </header>
 
-<!-- LANDING -->
+<!-- LANDING / LISTA -->
 <div id="screen-landing">
-  <div class="landing">
-    <h2>Preventivi Edili</h2>
-    <p>Crea un nuovo computo metrico oppure importa un file da PriMus</p>
-    <div class="landing-cards">
-      <div class="landing-card" onclick="iniziaNuovo()">
-        <span class="landing-card-icon">📋</span>
-        <h3>Nuovo preventivo</h3>
-        <p>Crea un computo metrico da zero</p>
-      </div>
-      <div class="landing-card">
-        <input type="file" accept=".xlsx" onchange="importaDaPrimus(this)" title="Seleziona un file xlsx PriMus">
-        <span class="landing-card-icon">📥</span>
-        <h3>Importa da PriMus</h3>
-        <p>Carica un file Excel esportato da PriMus per pre-popolare il preventivo</p>
+  <div class="lista-container">
+    <div class="lista-header">
+      <h2>I miei preventivi</h2>
+      <div class="lista-actions">
+        <button class="btn btn-primary" onclick="iniziaNuovo()">+ Nuovo</button>
+        <label class="btn btn-success" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px">
+          📥 Importa PriMus
+          <input type="file" accept=".xlsx" onchange="importaDaPrimus(this)" title="Seleziona un file xlsx PriMus" style="display:none">
+        </label>
       </div>
     </div>
+    <div id="lista-empty" style="display:none" class="lista-empty">
+      Nessun preventivo ancora. Crea il primo!
+    </div>
+    <table id="lista-table" class="lista-table" style="display:none">
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Data</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="lista-tbody"></tbody>
+    </table>
   </div>
 </div>
 
@@ -438,6 +481,7 @@
 
 <!-- Azioni fisse in basso -->
 <div class="action-bar">
+  <button class="btn" style="background:#495057;color:#fff" onclick="tornaLista()">← Lista</button>
   <button class="btn btn-primary" onclick="salva()">💾 Salva</button>
   <button class="btn btn-success" onclick="esportaPrimus()">📤 Esporta Primus</button>
   <button class="btn" style="background:#6c757d;color:#fff" onclick="apriRiepilogo()">📊 Riepilogo</button>
@@ -877,9 +921,7 @@ function iniziaNuovo() {
 }
 
 function tornaCasa() {
-  document.getElementById('screen-editor').style.display = 'none';
-  document.getElementById('screen-landing').style.display = 'block';
-  document.getElementById('home-btn').style.display = 'none';
+  caricaLista();
 }
 
 async function importaDaPrimus(input) {
@@ -895,7 +937,7 @@ async function importaDaPrimus(input) {
       throw new Error(err.detail || 'Errore sconosciuto');
     }
     const data = await r.json();
-    window.location = `/?id=${data.id}`;
+    await apriPreventivo(data.id);
   } catch (e) {
     mostraToast('Errore: ' + e.message, true);
   }
@@ -996,6 +1038,85 @@ function mostraToast(msg, errore = false) {
   t.textContent = msg;
   t.className = 'toast show' + (errore ? ' error' : '');
   setTimeout(() => t.className = 'toast', 2800);
+}
+
+// ---------------------------------------------------------------------------
+// Lista preventivi (storico)
+// ---------------------------------------------------------------------------
+async function caricaLista() {
+  try {
+    const r = await fetch('/api/preventivi');
+    const lista = await r.json();
+    const tbody = document.getElementById('lista-tbody');
+    const empty = document.getElementById('lista-empty');
+    const table = document.getElementById('lista-table');
+    tbody.innerHTML = '';
+    if (lista.length === 0) {
+      empty.style.display = 'block';
+      table.style.display = 'none';
+    } else {
+      empty.style.display = 'none';
+      table.style.display = 'table';
+      lista.forEach(p => {
+        const tr = document.createElement('tr');
+        tr.className = 'lista-row';
+        tr.innerHTML = `
+          <td>${esc(p.nome || '(senza nome)')}</td>
+          <td>${esc(p.data || '—')}</td>
+          <td>
+            <button class="btn-sm btn-open" onclick="apriPreventivo('${esc(p.id)}')">Apri</button>
+            <button class="btn-sm btn-del" onclick="eliminaPreventivo('${esc(p.id)}', '${esc(p.nome || '')}')">Elimina</button>
+          </td>`;
+        tbody.appendChild(tr);
+      });
+    }
+  } catch(e) {
+    mostraToast('Errore caricamento lista: ' + e.message, true);
+  }
+  document.getElementById('screen-editor').style.display = 'none';
+  document.getElementById('screen-recap').style.display = 'none';
+  document.getElementById('screen-landing').style.display = 'block';
+  document.getElementById('home-btn').style.display = 'none';
+}
+
+async function apriPreventivo(id) {
+  try {
+    const r = await fetch(`/api/preventivo/${id}`);
+    if (!r.ok) throw new Error('Preventivo non trovato');
+    const data = await r.json();
+    resetEditor();
+    preventivoId = data.id;
+    document.getElementById('idBadge').textContent = `ID: ${preventivoId}`;
+    document.getElementById('idBadge').style.display = 'inline';
+    document.getElementById('nome').value    = data.nome || '';
+    document.getElementById('cliente').value = data.cliente || '';
+    document.getElementById('data').value    = data.data || '';
+    document.getElementById('numero').value  = data.numero || '';
+    document.getElementById('ricarica_default').value = (data.ricarica_default * 100).toFixed(0);
+    for (const v of (data.voci || [])) aggiungiVoce(v);
+    renderCalcoli();
+    document.getElementById('screen-landing').style.display = 'none';
+    document.getElementById('screen-editor').style.display = 'block';
+    document.getElementById('home-btn').style.display = 'inline-flex';
+  } catch(e) {
+    mostraToast('Errore: ' + e.message, true);
+  }
+}
+
+async function eliminaPreventivo(id, nome) {
+  if (!confirm(`Eliminare «${nome || id}»?`)) return;
+  try {
+    const r = await fetch(`/api/preventivo/${id}`, { method: 'DELETE' });
+    if (!r.ok) throw new Error('Errore durante eliminazione');
+    caricaLista();
+  } catch(e) {
+    mostraToast('Errore: ' + e.message, true);
+  }
+}
+
+async function tornaLista() {
+  if (preventivoId) await salva();
+  caricaLista();
 }
 
 // ---------------------------------------------------------------------------
@@ -1170,8 +1291,9 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('data').value = new Date().toISOString().slice(0,10);
   const params = new URLSearchParams(location.search);
   if (params.get('id')) {
-    iniziaNuovo();
-    caricaDaUrl();
+    apriPreventivo(params.get('id'));
+  } else {
+    caricaLista();
   }
 });
 </script>
