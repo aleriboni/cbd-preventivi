@@ -1285,6 +1285,60 @@ function renderRiepilogo() {
 }
 
 // ---------------------------------------------------------------------------
+// Navigazione tastiera nelle griglie (misurazioni e costi)
+// ---------------------------------------------------------------------------
+document.addEventListener('keydown', e => {
+  const input = e.target;
+  if (!input.matches('tr.mis-row input, tr.ris-row input')) return;
+
+  const tr     = input.closest('tr');
+  const tbody  = tr.closest('tbody');
+  const rows   = Array.from(tbody.querySelectorAll('tr'));
+  const rowIdx = rows.indexOf(tr);
+
+  const rowInputs = Array.from(tr.querySelectorAll('input'));
+  const colIdx    = rowInputs.indexOf(input);
+
+  const focusCell = (r, c) => {
+    const inputs = Array.from(r.querySelectorAll('input'));
+    const t = inputs[Math.min(c, inputs.length - 1)];
+    if (t) { t.focus(); t.select(); }
+  };
+
+  switch (e.key) {
+    case 'ArrowRight':
+      if (input.type === 'text' && input.selectionStart !== input.value.length) return;
+      if (colIdx < rowInputs.length - 1) { e.preventDefault(); rowInputs[colIdx + 1].focus(); rowInputs[colIdx + 1].select(); }
+      break;
+    case 'ArrowLeft':
+      if (input.type === 'text' && input.selectionStart !== 0) return;
+      if (colIdx > 0) { e.preventDefault(); rowInputs[colIdx - 1].focus(); rowInputs[colIdx - 1].select(); }
+      break;
+    case 'ArrowUp':
+      if (rowIdx > 0) { e.preventDefault(); focusCell(rows[rowIdx - 1], colIdx); }
+      break;
+    case 'ArrowDown':
+      if (rowIdx < rows.length - 1) { e.preventDefault(); focusCell(rows[rowIdx + 1], colIdx); }
+      break;
+    case 'Enter': {
+      e.preventDefault();
+      if (rowIdx < rows.length - 1) {
+        focusCell(rows[rowIdx + 1], colIdx);
+      } else {
+        const voceId = parseInt(tbody.id.replace('mis-tbody-', '').replace('ris-tbody-', ''));
+        if (tbody.id.startsWith('mis-')) aggiungiMis(voceId);
+        else aggiungiRis(voceId);
+        setTimeout(() => {
+          const lastRow = Array.from(tbody.querySelectorAll('tr')).at(-1);
+          if (lastRow) focusCell(lastRow, colIdx);
+        }, 0);
+      }
+      break;
+    }
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Init
 // ---------------------------------------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
