@@ -41,7 +41,7 @@ from openpyxl import Workbook
 from openpyxl.cell import Cell
 
 from cbd_preventivi.models import Preventivo
-from cbd_preventivi.calcoli import prezzo_per_um
+from cbd_preventivi.calcoli import prezzo_per_um, quantita_x, totale_preventivo
 
 
 # Indici colonna (1-based)
@@ -62,12 +62,6 @@ PRIMA_RIGA_DATI = 4
 def _cella(foglio, riga: int, colonna: int) -> Cell:
     return foglio.cell(row=riga, column=colonna)
 
-
-def _scrivi_formula(foglio, riga: int, colonna: int, formula: str) -> None:
-    """Scrive una formula Excel nella cella specificata."""
-    cella = foglio.cell(row=riga, column=colonna)
-    cella.value = formula
-    cella.data_type = "f"
 
 
 # ---------------------------------------------------------------------------
@@ -157,8 +151,6 @@ def _scrivi_voce(foglio, indice_voce: int, voce, prezzo_unitario: float, riga_co
             _cella(foglio, riga, COL_D).value = misurazione.descrizione
 
             if misurazione.quantita_diretta is not None:
-                # Quantità diretta: valore numerico in I, E-H vuoti.
-                # Così il round-trip import→export→import preserva quantita_diretta.
                 _cella(foglio, riga, COL_I).value = misurazione.quantita_diretta
             else:
                 if misurazione.par_ug is not None:
@@ -169,13 +161,11 @@ def _scrivi_voce(foglio, indice_voce: int, voce, prezzo_unitario: float, riga_co
                     _cella(foglio, riga, COL_G).value = misurazione.larg
                 if misurazione.h_peso is not None:
                     _cella(foglio, riga, COL_H).value = misurazione.h_peso
-                _scrivi_formula(foglio, riga, COL_I, f"=ROUND(PRODUCT(E{riga}:H{riga}),2)")
+                _cella(foglio, riga, COL_I).value = round(misurazione.quantita, 2)
 
         elif usa_quantita_manuale and voce.quantita_manuale is not None:
             _cella(foglio, riga, COL_E).value = voce.quantita_manuale
-            _scrivi_formula(foglio, riga, COL_I, f"=ROUND(PRODUCT(E{riga}:H{riga}),2)")
-        else:
-            _scrivi_formula(foglio, riga, COL_I, f"=ROUND(PRODUCT(E{riga}:H{riga}),2)")
+            _cella(foglio, riga, COL_I).value = round(voce.quantita_manuale, 2)
 
     # 4. Riga marker «3'»
     riga_marker = ultima_riga_mis + 1
@@ -183,12 +173,11 @@ def _scrivi_voce(foglio, indice_voce: int, voce, prezzo_unitario: float, riga_co
 
     # 5. Riga SOMMANO
     riga_sommano = riga_marker + 1
+    qtx = quantita_x(voce)
     _cella(foglio, riga_sommano, COL_D).value = f"SOMMANO {voce.um}"
-    _scrivi_formula(foglio, riga_sommano, COL_I,
-                    f"=ROUND(SUM(I{riga_label_mis}:I{riga_marker}),2)")
+    _cella(foglio, riga_sommano, COL_I).value = round(qtx, 2)
     _cella(foglio, riga_sommano, COL_J).value = prezzo_unitario
-    _scrivi_formula(foglio, riga_sommano, COL_K,
-                    f"=ROUND(PRODUCT(I{riga_sommano}:J{riga_sommano}),2)")
+    _cella(foglio, riga_sommano, COL_K).value = round(qtx * prezzo_unitario, 2)
 
     # 6. Riga separatore
     riga_separatore = riga_sommano + 1
@@ -197,12 +186,11 @@ def _scrivi_voce(foglio, indice_voce: int, voce, prezzo_unitario: float, riga_co
     return riga_separatore + 1
 
 
-def _scrivi_footer(foglio, riga_dopo_ultimo_separatore: int) -> None:
+def _scrivi_footer(foglio, riga_dopo_ultimo_separatore: int, totale: float) -> None:
     """Righe finali: TOTALE euro, AGGIUNGE NUOVA VOCE, firma PriMus."""
     riga_totale = riga_dopo_ultimo_separatore
     _cella(foglio, riga_totale, COL_D).value = "TOTALE euro"
-    _scrivi_formula(foglio, riga_totale, COL_K,
-                    f"=ROUND(SUM(K{PRIMA_RIGA_DATI}:K{riga_totale - 1}),2)")
+    _cella(foglio, riga_totale, COL_K).value = round(totale, 2)
     _cella(foglio, riga_totale, COL_L).value = "0"
     _cella(foglio, riga_totale, COL_M).value = "0"
     _cella(foglio, riga_totale, COL_N).value = "0"
@@ -341,7 +329,7 @@ def genera_xlsx(preventivo: Preventivo) -> bytes:
         prezzo = prezzo_per_um(voce, preventivo)
         riga_corrente = _scrivi_voce(foglio, indice, voce, prezzo, riga_corrente)
 
-    _scrivi_footer(foglio, riga_corrente)
+    _scrivi_footer(foglio, riga_corrente, totale_preventivo(preventivo))
 
     # Foglio "Dati" vuoto (presente nel formato PriMus originale)
     workbook.create_sheet("Dati")

@@ -129,7 +129,7 @@ class TestVoce1:
     def test_riga_misurazione(self):
         r = PRIMA_RIGA_DATI + 2
         assert self.ws.cell(r, 5).value == 1.0
-        assert self.ws.cell(r, 9).value == f"=ROUND(PRODUCT(E{r}:H{r}),2)"
+        assert self.ws.cell(r, 9).value == pytest.approx(1.0)
 
     def test_marker_3prime(self):
         r = PRIMA_RIGA_DATI + 3
@@ -138,8 +138,8 @@ class TestVoce1:
     def test_sommano(self):
         r = PRIMA_RIGA_DATI + 4
         assert self.ws.cell(r, 4).value == "SOMMANO a corpo"
-        assert "SUM" in str(self.ws.cell(r, 9).value)
-        assert "PRODUCT" in str(self.ws.cell(r, 11).value)
+        assert self.ws.cell(r, 9).value == pytest.approx(1.0)   # quantita_x = par_ug = 1
+        assert self.ws.cell(r, 11).value == pytest.approx(0.0)  # 1.0 * prezzo 0 = 0
 
     def test_separatore(self):
         r = PRIMA_RIGA_DATI + 5
@@ -164,21 +164,22 @@ class TestVoce3:
         assert self.ws.cell(r, 3).value == "003"
 
     def test_sei_righe_misurazioni(self):
-        """Tutte e 6 le misurazioni devono avere formula PRODUCT in colonna I."""
+        """Tutte e 6 le misurazioni devono avere un valore numerico positivo in colonna I."""
         prima_riga_mis = self.RIGA_VOCE3 + 2
-        righe_con_product = sum(
+        righe_con_valore = sum(
             1 for offset in range(6)
-            if "PRODUCT" in str(self.ws.cell(prima_riga_mis + offset, 9).value or "")
+            if isinstance(self.ws.cell(prima_riga_mis + offset, 9).value, (int, float))
+            and self.ws.cell(prima_riga_mis + offset, 9).value > 0
         )
-        assert righe_con_product == 6
+        assert righe_con_valore == 6
 
-    def test_range_sum_nel_sommano(self):
-        """Il SUM del SOMMANO deve coprire dal label misurazioni al marker."""
-        riga_label_mis = self.RIGA_VOCE3 + 1
+    def test_sommano_voce3_quantita(self):
+        """Il SOMMANO deve riportare la somma corretta delle 6 misurazioni."""
         riga_marker = self.RIGA_VOCE3 + 2 + 6
         riga_sommano = riga_marker + 1
-        formula = self.ws.cell(riga_sommano, 9).value
-        assert f"SUM(I{riga_label_mis}:I{riga_marker})" in str(formula)
+        valore = self.ws.cell(riga_sommano, 9).value
+        assert isinstance(valore, (int, float))
+        assert valore == pytest.approx(10.07, abs=0.01)
 
 
 # ---------------------------------------------------------------------------
@@ -198,8 +199,8 @@ class TestFooter:
     def test_totale_euro(self):
         riga = self._trova_riga("TOTALE euro")
         assert riga is not None
-        formula_k = self.ws.cell(riga, 11).value
-        assert f"SUM(K{PRIMA_RIGA_DATI}:" in str(formula_k)
+        valore_k = self.ws.cell(riga, 11).value
+        assert isinstance(valore_k, (int, float))   # valore numerico, non formula
         assert self.ws.cell(riga, 12).value == "0"
 
     def test_aggiunge_nuova_voce(self):
@@ -253,25 +254,22 @@ class TestCalcoliMisurazioni:
         assert quantita_x(voce) == pytest.approx(4.75, abs=0.01)
 
     def test_riga_vuota_filtrata_nel_xlsx(self):
-        """La riga vuota non deve comparire come riga PRODUCT nell'xlsx esportato."""
+        """La riga vuota non deve influenzare la quantità nel SOMMANO."""
         prev = Preventivo(ricarica_default=0.0, voci=[
             Voce(
                 codice="001", descrizione="Test", um="mc",
                 misurazioni=[
-                    RigaMisurazione(lung=4.2, larg=0.2, h_peso=3.3),
-                    RigaMisurazione(lung=5.0, larg=0.12, h_peso=3.3),
-                    RigaMisurazione(),  # riga vuota
+                    RigaMisurazione(lung=4.2, larg=0.2, h_peso=3.3),   # 2.77
+                    RigaMisurazione(lung=5.0, larg=0.12, h_peso=3.3),  # 1.98
+                    RigaMisurazione(),  # riga vuota → ignorata
                 ],
                 costi=[RigaCosto(descrizione="op", um="ore", quantita=1, costo_unitario=1)],
             )
         ])
         ws = openpyxl.load_workbook(io.BytesIO(genera_xlsx(prev)))["Computo metrico"]
-        righe_product = sum(
-            1 for riga in ws.iter_rows(min_row=PRIMA_RIGA_DATI, max_row=ws.max_row)
-            for cella in riga
-            if cella.value and "PRODUCT(E" in str(cella.value) and ":H" in str(cella.value)
-        )
-        assert righe_product == 2
+        # SOMMANO è a PRIMA_RIGA_DATI + 5 (header + label + 2 mis + marker + sommano)
+        riga_sommano = PRIMA_RIGA_DATI + 5
+        assert ws.cell(riga_sommano, 9).value == pytest.approx(4.75, abs=0.01)
 
 
 # ---------------------------------------------------------------------------

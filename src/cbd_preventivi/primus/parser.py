@@ -63,7 +63,7 @@ def _leggi_sommano(voce_corrente: dict, testo_d: str, valore_j) -> None:
     parti = testo_d.split()
     if len(parti) > 1:
         um_primus = parti[1].lower()
-        voce_corrente["um"] = _MAPPA_UM.get(um_primus, parti[1])
+        voce_corrente["um"] = _MAPPA_UM.get(um_primus, um_primus)
     prezzo = _a_float(valore_j)
     if prezzo is not None:
         voce_corrente["prezzo_override"] = prezzo
