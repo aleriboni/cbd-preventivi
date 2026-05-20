@@ -948,7 +948,10 @@ async function importaDaPrimus(input) {
 // ---------------------------------------------------------------------------
 // Titolo header
 // ---------------------------------------------------------------------------
-function aggiornaTitolo() {}
+function aggiornaTitolo() {
+  const nome = document.getElementById('nome')?.value.trim();
+  document.title = nome ? `${nome} — Preventivi Edili` : 'Preventivi Edili';
+}
 
 // ---------------------------------------------------------------------------
 // Salva
@@ -997,28 +1000,6 @@ async function esportaPrimus() {
 // ---------------------------------------------------------------------------
 // Carica preventivo da URL ?id=xxx
 // ---------------------------------------------------------------------------
-async function caricaDaUrl() {
-  const params = new URLSearchParams(location.search);
-  const id = params.get('id');
-  if (!id) return;
-  try {
-    const r = await fetch(`/api/preventivo/${id}`);
-    if (!r.ok) return;
-    const data = await r.json();
-    preventivoId = data.id;
-    document.getElementById('idBadge').textContent = `ID: ${preventivoId}`;
-    document.getElementById('idBadge').style.display = 'inline';
-    document.getElementById('nome').value    = data.nome || '';
-    document.getElementById('cliente').value = data.cliente || '';
-    document.getElementById('data').value    = data.data || '';
-    document.getElementById('numero').value  = data.numero || '';
-    document.getElementById('ricarica_default').value = (data.ricarica_default * 100).toFixed(0);
-    for (const v of (data.voci || [])) aggiungiVoce(v);
-    renderCalcoli();
-  } catch (e) {
-    console.error(e);
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Util

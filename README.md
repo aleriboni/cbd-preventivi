@@ -4,10 +4,13 @@ Tool web per la creazione e gestione di **computi metrici edilizi**, con support
 
 ## Funzionalità
 
+- **Storico preventivi**: lista di tutti i preventivi salvati sulla home, con apertura e cancellazione
 - Creazione di preventivi con voci, misurazioni analitiche e analisi costi
-- Calcolo automatico di quantità, costo/UM e prezzo/UM con ricarica configurabile
-- Import da file xlsx esportato da PriMus (con normalizzazione UM e gestione righe «Vedi voce»)
-- Export in formato xlsx compatibile con PriMus ed Excel (shared strings, formule ROUND/SUM/PRODUCT)
+- Calcolo automatico di quantità, costo/UM e prezzo/UM con ricarica configurabile per voce
+- Pagina **Riepilogo** view-only con tabella completa ed espansione misurazioni/costi per voce
+- Import da file xlsx esportato da PriMus (preserva UM originali, gestisce righe «Vedi voce»)
+- Export in formato xlsx compatibile con PriMus ed Excel (valori calcolati, shared strings)
+- Navigazione con frecce nelle griglie misurazioni e costi (↑↓←→ + Enter)
 - Persistenza su disco (file JSON per preventivo)
 
 ## Struttura del progetto
@@ -17,7 +20,7 @@ cbd-preventivi/
 ├── src/
 │   └── cbd_preventivi/
 │       ├── models.py           # Modelli di dominio (Pydantic)
-│       ├── calcoli.py          # Logica di calcolo
+│       ├── calcoli.py          # Logica di calcolo pura
 │       ├── primus/
 │       │   ├── export.py       # Generazione xlsx PriMus
 │       │   └── parser.py       # Parsing xlsx PriMus
@@ -27,7 +30,8 @@ cbd-preventivi/
 ├── frontend/
 │   └── index.html              # UI single-page (vanilla JS)
 ├── tests/
-│   └── test_export_primus.py
+│   ├── test_export_primus.py
+│   └── test_routes.py
 ├── data/                       # Preventivi salvati (gitignored)
 └── pyproject.toml
 ```
@@ -70,6 +74,8 @@ uv run uvicorn cbd_preventivi.api.app:app --reload
 uv run pytest
 ```
 
+31 test, copertura su calcoli, export xlsx e API REST.
+
 ## Build eseguibile Windows (.exe)
 
 ```bash
@@ -82,25 +88,29 @@ Per distribuire: zippare la cartella e consegnarla all'utente finale.
 L'utente fa doppio click su `cbd-preventivi.exe`: il server si avvia e il browser
 si apre automaticamente su `http://127.0.0.1:8000`. I dati vengono salvati nella
 cartella `data/` accanto all'eseguibile, e restano tra un aggiornamento e l'altro.
+Se l'applicativo è già in esecuzione, riaprirlo apre solo il browser senza avviare un secondo server.
 
 > Il build su macOS produce un binario macOS. Per il `.exe` Windows è necessario
 > eseguire `uv run python build.py` su un PC Windows.
 
 ## API REST
 
-| Metodo | Percorso                                  | Descrizione                         |
-|--------|-------------------------------------------|-------------------------------------|
-| POST   | `/api/preventivo`                         | Crea un nuovo preventivo            |
-| GET    | `/api/preventivo/{id}`                    | Carica un preventivo                |
-| PUT    | `/api/preventivo/{id}`                    | Aggiorna un preventivo              |
-| POST   | `/api/preventivo/import/primus`           | Importa da file xlsx PriMus         |
-| GET    | `/api/preventivo/{id}/export/primus`      | Esporta in xlsx PriMus              |
+| Metodo   | Percorso                                  | Descrizione                         |
+|----------|-------------------------------------------|-------------------------------------|
+| GET      | `/api/preventivi`                         | Lista tutti i preventivi            |
+| POST     | `/api/preventivo`                         | Crea un nuovo preventivo            |
+| GET      | `/api/preventivo/{id}`                    | Carica un preventivo                |
+| PUT      | `/api/preventivo/{id}`                    | Aggiorna un preventivo              |
+| DELETE   | `/api/preventivo/{id}`                    | Elimina un preventivo               |
+| POST     | `/api/preventivo/import/primus`           | Importa da file xlsx PriMus         |
+| GET      | `/api/preventivo/{id}/export/primus`      | Esporta in xlsx PriMus              |
 
 ## Formato PriMus
 
 Il formato xlsx PriMus ha alcune peculiarità gestite dal tool:
 
 - **Shared strings**: PriMus richiede `xl/sharedStrings.xml`; openpyxl scrive inline strings. L'export post-processa il file per convertirle.
-- **Unità di misura**: PriMus usa `a`, `m2`, `m3`, `cadauno`; il tool normalizza verso `a corpo`, `mq`, `mc`, `cad`.
+- **Unità di misura**: le UM vengono preservate esatte dall'import (nessuna normalizzazione) per garantire il round-trip fedele.
+- **Valori calcolati**: l'export scrive valori numerici precalcolati (non formule) nelle colonne I e K, compatibili con l'import PriMus senza bisogno di ricalcolo.
 - **Righe «Vedi voce»**: righe con quantità già calcolata (E-H vuoti, valore in I) vengono importate come `quantita_diretta` e riesportate preservando il round-trip.
-- **Costi senza ricarica**: PriMus lavora con i costi netti; la ricarica viene gestita separatamente dal tool.
+- **Prezzi da PriMus**: la colonna J del SOMMANO (prezzo finito con ricarica) viene importata come `prezzo_override` e usata direttamente senza applicare ulteriore ricarica.
