@@ -30,14 +30,6 @@ COL_N = 14
 
 PRIMA_RIGA_DATI = 4
 
-# Mappa delle unità di misura PriMus → etichette standard del tool
-_MAPPA_UM: dict[str, str] = {
-    "a":       "a corpo",
-    "cadauno": "cad",
-    "m2":      "mq",
-    "m3":      "mc",
-}
-
 
 def _a_float(valore) -> Optional[float]:
     """Converte un valore di cella in float; restituisce None se non numerico."""
@@ -57,13 +49,12 @@ def _a_stringa(valore) -> str:
 def _leggi_sommano(voce_corrente: dict, testo_d: str, valore_j) -> None:
     """Estrae UM e prezzo unitario dalla riga SOMMANO.
 
-    Il testo in D è del tipo «SOMMANO mq»; il valore in J è il prezzo/UM
-    finito (con ricarica) così come appare in PriMus.
+    Il testo in D è del tipo «SOMMANO mq» o «SOMMANO a corpo»; conserviamo
+    la stringa UM esatta di PriMus così il round-trip import→export è fedele.
     """
-    parti = testo_d.split()
-    if len(parti) > 1:
-        um_primus = parti[1].lower()
-        voce_corrente["um"] = _MAPPA_UM.get(um_primus, um_primus)
+    um = testo_d[len("SOMMANO"):].strip()
+    if um:
+        voce_corrente["um"] = um
     prezzo = _a_float(valore_j)
     if prezzo is not None:
         voce_corrente["prezzo_override"] = prezzo
