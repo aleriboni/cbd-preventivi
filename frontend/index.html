@@ -818,6 +818,8 @@ function rimuoviRiga(btn) {
 
 function rimuoviVoce(id, evt) {
   evt.stopPropagation();
+  const desc = document.querySelector(`[data-voce="${id}"] .voce-descrizione`)?.value.trim();
+  if (!confirm(`Eliminare la voce${desc ? ' «' + desc + '»' : ''}?`)) return;
   document.querySelector(`[data-voce="${id}"]`).remove();
   renderCalcoli();
 }
